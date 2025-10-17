@@ -1,0 +1,61 @@
+body {
+    font-family: 'Segoe UI', 'Meiryo UI', sans-serif;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.main-window {
+    width: 320px;
+    height: 130px;
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 15px;
+    box-sizing: border-box;
+}
+
+.status-display {
+    text-align: center;
+}
+
+.status-text {
+    font-size: 14px;
+    color: #666666;
+    margin: 0;
+}
+
+.button-container {
+    display: flex;
+    gap: 15px;
+}
+
+.control-button {
+    width: 100px;
+    padding: 8px 0;
+    font-size: 14px;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #e7e7e7;
+    transition: background-color 0.3s;
+}
+
+.control-button:hover {
+    background-color: #dcdcdc;
+}
+
+.control-button:disabled {
+    background-color: #f4f4f4;
+    color: #aaaaaa;
+    cursor: not-allowed;
+    border-color: #dddddd;
+}
