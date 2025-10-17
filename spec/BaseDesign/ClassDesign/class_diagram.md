@@ -20,16 +20,33 @@ classDiagram
         -IUserInteractionService userInteractionService
     }
 
-    class AppSettings {
-        <<Model>>
-        +string EvidenceSavePath
-        +bool KeepSnapshot
+    class IMonitoringService {
+        <<Interface>>
+        +void Start()
+        +void Stop()
+        +event Action~string~ StatusChanged
     }
 
-    class MonitoringTarget {
-        <<Model>>
-        +string Name
-        +string PathPattern
+    class MonitoringService {
+        <<Service>>
+        -IConfigService configService
+        -IUserInteractionService userInteractionService
+        -IEvidenceExtractionService evidenceExtractionService
+        +void Start()
+        +void Stop()
+        +event Action~string~ StatusChanged
+    }
+
+    class IEvidenceExtractionService {
+        <<Interface>>
+        +void CreateSnapshot(string snapshotPath, IEnumerable~MonitoringTarget~ targets)
+        +void ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
+    }
+
+    class EvidenceExtractionService {
+        <<Service>>
+        +void CreateSnapshot(string snapshotPath, IEnumerable~MonitoringTarget~ targets)
+        +void ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
     }
 
     class IConfigService {
@@ -45,42 +62,18 @@ classDiagram
         +IEnumerable~MonitoringTarget~ GetMonitoringTargets()
     }
 
-    class IniParser {
-        <<Helper>>
-        -string _filePath
-        +IniData Parse()
-    }
-
-    class IniData {
-        <<DTO>>
-        +Dictionary~string, Dictionary~string, string~~ Sections
-    }
-
-    class IMonitoringService {
-        <<Interface>>
-        +void Start()
-        +void Stop()
-        +event Action~string~ StatusChanged
-    }
-
-    class MonitoringService {
-        <<Service>>
-        -IConfigService configService
-        -IUserInteractionService userInteractionService
-        +void Start()
-        +void Stop()
-        +event Action~string~ StatusChanged
-    }
-
     class IUserInteractionService {
         <<Interface>>
         +void ShowMessage(string message)
         +void ShowError(string message)
     }
 
-    class ICommand {
-        <<Interface>>
-    }
+    class AppSettings { <<Model>> }
+    class MonitoringTarget { <<Model>> }
+    class IniParser { <<Helper>> }
+    class IniData { <<DTO>> }
+    class ICommand { <<Interface>> }
+
 
     MainWindow --|> MainViewModel : DataContext
     MainViewModel ..> IMonitoringService : Uses
@@ -91,6 +84,9 @@ classDiagram
     MonitoringService ..|> IMonitoringService : Implements
     MonitoringService ..> IConfigService : Uses
     MonitoringService ..> IUserInteractionService : Uses
+    MonitoringService ..> IEvidenceExtractionService : Uses
+
+    EvidenceExtractionService ..|> IEvidenceExtractionService : Implements
 
     ConfigService ..|> IConfigService : Implements
     ConfigService ..> IniParser : Uses
@@ -132,7 +128,7 @@ classDiagram
 ### Services
 
 - **IUserInteractionService** (Interface):
-  - ユーザーへの通知（ダイアログ表示など）を行うための契約を定義します。これにより、ビジネスロジック層がUI層に直接依存することを防ぎます。
+  - ユーザーへの通知（ダイアログ表示など）を行うための契約を定義します。これにより、ビジネスロジック層が UI 層に直接依存することを防ぎます。
   - `ShowMessage(string message)`: 情報メッセージを表示します。
   - `ShowError(string message)`: エラーメッセージを表示します。
 - **IConfigService** (Interface):
@@ -143,15 +139,21 @@ classDiagram
   - `IConfigService`の実装クラスです。
   - `IniParser`を利用して INI ファイルの内容を解析し、その結果を`AppSettings`や`MonitoringTarget`といった、アプリケーションで扱いやすいモデルオブジェクトに変換する責務を持ちます。
 - **IMonitoringService** (Interface):
-  - ログ監視のコア機能に関する契約を定義します。
+  - ログ監視のライフサイクル管理に関する契約を定義します。
   - `Start()`: 監視プロセスを開始します。
   - `Stop()`: 監視プロセスを停止し、差分を検出・保存します。
   - `StatusChanged`: ステータスの変更を ViewModel に通知するためのイベントです。
 - **MonitoringService**:
-  - `IMonitoringService`の実装クラスです。
-  - 監視の開始時には、対象ファイルの現在の状態のスナップショットを作成します。
-  - 監視の停止時には、再度スナップショットを作成し、開始時のものと比較して差分を特定し、結果を`EvidenceSavePath`に保存します。
+  - `IMonitoringService`の実装クラスです。監視フローの制御に責任を持ちます。
+  - `IEvidenceExtractionService` を利用して、スナップショットの作成や差分抽出などの具体的なファイル操作を委譲します。
   - 差分がなかった場合や、処理中にエラーが発生した場合は、`IUserInteractionService` を介してユーザーへの通知を要求します。
+- **IEvidenceExtractionService** (Interface):
+  - エビデンスの抽出に関する具体的なファイル操作の契約を定義します。
+  - `CreateSnapshot(string snapshotPath, IEnumerable<MonitoringTarget> targets)`: 指定されたパスに、監視対象のスナップショットを作成します。
+  - `ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)`: 2 つのスナップショットを比較し、差分を指定されたパスに保存します。
+- **EvidenceExtractionService**:
+  - `IEvidenceExtractionService`の実装クラスです。
+  - スナップショットの作成、ファイル比較、差分ファイルの保存など、実際のファイルシステム操作に責任を持ちます。
 
 ### Helpers
 
