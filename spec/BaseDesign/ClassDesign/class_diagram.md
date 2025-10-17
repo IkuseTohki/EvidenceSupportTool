@@ -17,6 +17,7 @@ classDiagram
         +ICommand StopMonitoringCommand
         -IMonitoringService monitoringService
         -IConfigService configService
+        -IUserInteractionService userInteractionService
     }
 
     class AppSettings {
@@ -65,9 +66,16 @@ classDiagram
     class MonitoringService {
         <<Service>>
         -IConfigService configService
+        -IUserInteractionService userInteractionService
         +void Start()
         +void Stop()
         +event Action~string~ StatusChanged
+    }
+
+    class IUserInteractionService {
+        <<Interface>>
+        +void ShowMessage(string message)
+        +void ShowError(string message)
     }
 
     class ICommand {
@@ -77,10 +85,12 @@ classDiagram
     MainWindow --|> MainViewModel : DataContext
     MainViewModel ..> IMonitoringService : Uses
     MainViewModel ..> IConfigService : Uses
+    MainViewModel ..> IUserInteractionService : Uses
     MainViewModel ..> ICommand : Uses
 
     MonitoringService ..|> IMonitoringService : Implements
     MonitoringService ..> IConfigService : Uses
+    MonitoringService ..> IUserInteractionService : Uses
 
     ConfigService ..|> IConfigService : Implements
     ConfigService ..> IniParser : Uses
@@ -100,6 +110,7 @@ classDiagram
 
 - **MainViewModel**:
   - UI の状態とロジックを管理します。
+  - `IUserInteractionService` を通じて、ユーザーへの通知（メッセージやエラーダイアログの表示）を要求します。
   - `StatusText`: UI に表示される現在のステータス（"待機中", "監視中"など）です。
   - `StartMonitoringCommand`: 監視開始ボタンにバインドされるコマンドです。実行されると`IMonitoringService`の`Start`メソッドを呼び出します。
   - `StopMonitoringCommand`: 監視停止ボタンにバインドされるコマンドです。実行されると`IMonitoringService`の`Stop`メソッドを呼び出します。
@@ -120,6 +131,10 @@ classDiagram
 
 ### Services
 
+- **IUserInteractionService** (Interface):
+  - ユーザーへの通知（ダイアログ表示など）を行うための契約を定義します。これにより、ビジネスロジック層がUI層に直接依存することを防ぎます。
+  - `ShowMessage(string message)`: 情報メッセージを表示します。
+  - `ShowError(string message)`: エラーメッセージを表示します。
 - **IConfigService** (Interface):
   - 設定情報を取得するための契約を定義します。
   - `GetAppSettings()`: `AppSettings`オブジェクトを取得します。
@@ -136,6 +151,7 @@ classDiagram
   - `IMonitoringService`の実装クラスです。
   - 監視の開始時には、対象ファイルの現在の状態のスナップショットを作成します。
   - 監視の停止時には、再度スナップショットを作成し、開始時のものと比較して差分を特定し、結果を`EvidenceSavePath`に保存します。
+  - 差分がなかった場合や、処理中にエラーが発生した場合は、`IUserInteractionService` を介してユーザーへの通知を要求します。
 
 ### Helpers
 
