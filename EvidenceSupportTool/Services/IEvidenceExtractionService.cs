@@ -21,6 +21,7 @@ namespace EvidenceSupportTool.Services
         /// <param name="snapshot1Path">スナップショット1の親フォルダパス。</param>
         /// <param name="snapshot2Path">スナップショット2の親フォルダパス。</param>
         /// <param name="evidencePath">差分ファイルの保存先親フォルダパス。</param>
-        void ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath);
+        /// <returns>差分が検出された場合はtrue、それ以外の場合はfalse。</returns>
+        bool ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath);
     }
 }

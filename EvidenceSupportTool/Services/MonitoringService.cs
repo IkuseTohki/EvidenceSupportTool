@@ -11,6 +11,10 @@ namespace EvidenceSupportTool.Services
     /// </summary>
     public class MonitoringService : IMonitoringService
     {
+        private const string Snapshot1FolderName = "snapshot1";
+        private const string Snapshot2FolderName = "snapshot2";
+        private const string EvidenceFolderName = "evidence";
+
         private readonly IConfigService _configService;
         private readonly IUserInteractionService _userInteractionService;
         private readonly IEvidenceExtractionService _evidenceExtractionService;
@@ -81,7 +85,7 @@ namespace EvidenceSupportTool.Services
             _currentEvidenceFolderPath = Path.Combine(appSettings.EvidenceSavePath, timestamp);
 
             // snapshot1のパスを構築
-            string snapshot1Path = Path.Combine(_currentEvidenceFolderPath, "snapshot1");
+            string snapshot1Path = Path.Combine(_currentEvidenceFolderPath, Snapshot1FolderName);
 
             // スナップショット作成を委譲
             _evidenceExtractionService.CreateSnapshot(snapshot1Path, _monitoringTargets);
@@ -110,11 +114,20 @@ namespace EvidenceSupportTool.Services
 
             _isMonitoringActive = false;
 
-            // TODO: 代替案に基づき、snapshot2フォルダにファイルをコピーし、
-            // snapshot1フォルダと比較してevidenceを作成する処理を実装
+            // 各パスを構築
+            string snapshot1Path = Path.Combine(_currentEvidenceFolderPath, Snapshot1FolderName);
+            string snapshot2Path = Path.Combine(_currentEvidenceFolderPath, Snapshot2FolderName);
+            string evidencePath = Path.Combine(_currentEvidenceFolderPath, EvidenceFolderName);
 
-            // 仮実装: 差分がなかったことにして通知する
-            _userInteractionService.ShowMessage("差分はありませんでした。");
+            // snapshot2を作成
+            _evidenceExtractionService.CreateSnapshot(snapshot2Path, _monitoringTargets);
+
+            // 差分を抽出し、結果に応じて通知
+            bool hasDifference = _evidenceExtractionService.ExtractEvidence(snapshot1Path, snapshot2Path, evidencePath);
+            if (!hasDifference)
+            {
+                _userInteractionService.ShowMessage("差分はありませんでした。");
+            }
 
             OnStatusChanged("監視を停止しました。");
         }

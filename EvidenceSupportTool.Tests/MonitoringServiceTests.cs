@@ -37,15 +37,18 @@ namespace EvidenceSupportTool.Tests
         private class MockEvidenceExtractionService : IEvidenceExtractionService
         {
             public List<(string snapshotPath, IEnumerable<MonitoringTarget> targets)> CreateSnapshotCalls { get; } = new();
+            public List<(string snapshot1Path, string snapshot2Path, string evidencePath)> ExtractEvidenceCalls { get; } = new();
+            public bool ExtractEvidenceReturnValue { get; set; } = false;
 
             public void CreateSnapshot(string snapshotPath, IEnumerable<MonitoringTarget> targets)
             {
                 CreateSnapshotCalls.Add((snapshotPath, targets));
             }
 
-            public void ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
+            public bool ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
             {
-                // 何もしない
+                ExtractEvidenceCalls.Add((snapshot1Path, snapshot2Path, evidencePath));
+                return ExtractEvidenceReturnValue;
             }
         }
 
@@ -224,8 +227,9 @@ namespace EvidenceSupportTool.Tests
         [TestMethod]
         public void Stop_ShouldNotifyWhenNoChanges()
         {
-            // テストの観点: 差分がない場合に、その旨がユーザーに通知されること。
+            // テストの観点: ExtractEvidenceがfalseを返した場合（差分なし）、ユーザーに通知されること。
             // Arrange
+            _mockEvidenceExtractionService.ExtractEvidenceReturnValue = false; // 差分なしをシミュレート
             var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
             monitoringService.Start();
 
@@ -263,6 +267,49 @@ namespace EvidenceSupportTool.Tests
 
             // 渡されたターゲットが正しいか検証
             CollectionAssert.AreEqual(targets, calledTargets.ToList());
+        }
+
+        [TestMethod]
+        public void Stop_ShouldCallCreateSnapshotAndExtractEvidence()
+        {
+            // テストの観点: Stop時にsnapshot2作成とevidence抽出が適切な引数で呼ばれること。
+            // Arrange
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var targets = new List<MonitoringTarget> { new MonitoringTarget { Name = "Test", PathPattern = "C:\\test.log" } };
+            _mockConfigService.MonitoringTargets = targets;
+            monitoringService.Start(); // これで _currentEvidenceFolderPath が設定される
+
+            // Act
+            monitoringService.Stop();
+
+            // Assert
+            // 1. snapshot2が作成されることの検証
+            Assert.AreEqual(2, _mockEvidenceExtractionService.CreateSnapshotCalls.Count); // Startで1回, Stopで1回
+            var (snapshot2Path, _) = _mockEvidenceExtractionService.CreateSnapshotCalls[1];
+            StringAssert.Contains(snapshot2Path, "snapshot2");
+
+            // 2. evidenceが抽出されることの検証
+            Assert.AreEqual(1, _mockEvidenceExtractionService.ExtractEvidenceCalls.Count);
+            var (s1Path, s2Path, evPath) = _mockEvidenceExtractionService.ExtractEvidenceCalls[0];
+            StringAssert.Contains(s1Path, "snapshot1");
+            StringAssert.Contains(s2Path, "snapshot2");
+            StringAssert.Contains(evPath, "evidence");
+        }
+
+        [TestMethod]
+        public void Stop_ShouldNotNotifyWhenChangesExist()
+        {
+            // テストの観点: ExtractEvidenceがtrueを返した場合（差分あり）、ユーザーに通知されないこと。
+            // Arrange
+            _mockEvidenceExtractionService.ExtractEvidenceReturnValue = true; // 差分ありをシミュレート
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            monitoringService.Start();
+
+            // Act
+            monitoringService.Stop();
+
+            // Assert
+            Assert.AreEqual(0, _mockUserInteractionService.ShowMessageCalls.Count);
         }
     }
 }

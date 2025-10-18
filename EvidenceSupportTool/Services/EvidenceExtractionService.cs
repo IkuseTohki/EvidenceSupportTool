@@ -14,7 +14,7 @@ namespace EvidenceSupportTool.Services
             throw new NotImplementedException();
         }
 
-        public void ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
+        public bool ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
         {
             throw new NotImplementedException();
         }
