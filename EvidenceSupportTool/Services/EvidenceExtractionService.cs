@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography; // For MD5 hash
 
 namespace EvidenceSupportTool.Services
 {
@@ -96,17 +95,26 @@ namespace EvidenceSupportTool.Services
 
                     if (snapshot1Files.ContainsKey(file2.Key))
                     {
-                        // 両方に存在するファイル: 内容が変更されたかチェック
-                        if (!CompareFilesByHash(fullPath1, fullPath2))
+                        // 両方に存在するファイル: snapshot1のファイルサイズ以降のデータを抽出
+                        long snapshot1FileSize = new FileInfo(fullPath1).Length;
+
+                        using (FileStream fs2 = new FileStream(fullPath2, FileMode.Open, FileAccess.Read))
                         {
-                            // 変更あり
-                            CopyFileToEvidence(fullPath2, evidencePath, file2.Key);
-                            hasDifference = true;
+                            if (fs2.Length > snapshot1FileSize)
+                            {
+                                fs2.Seek(snapshot1FileSize, SeekOrigin.Begin);
+                                byte[] buffer = new byte[fs2.Length - snapshot1FileSize];
+                                fs2.Read(buffer, 0, buffer.Length);
+
+                                // 抽出したデータをevidenceディレクトリに保存
+                                CopyBytesToEvidence(buffer, evidencePath, file2.Key);
+                                hasDifference = true;
+                            }
                         }
                     }
                     else
                     {
-                        // snapshot2にのみ存在するファイル: 新規追加
+                        // snapshot1に存在せずsnapshot2にのみ存在するファイル: 新規追加
                         CopyFileToEvidence(fullPath2, evidencePath, file2.Key);
                         hasDifference = true;
                     }
@@ -161,27 +169,7 @@ namespace EvidenceSupportTool.Services
                             );
         }
 
-        /// <summary>
-        /// 2つのファイルのハッシュ値を比較して、内容が同じかどうかを判定します。
-        /// </summary>
-        private bool CompareFilesByHash(string filePath1, string filePath2)
-        {
-            if (!File.Exists(filePath1) || !File.Exists(filePath2))
-            {
-                return false; // どちらかのファイルが存在しない場合は異なる
-            }
-
-            using (var md5 = MD5.Create())
-            {
-                using (var stream1 = File.OpenRead(filePath1))
-                using (var stream2 = File.OpenRead(filePath2))
-                {
-                    var hash1 = md5.ComputeHash(stream1);
-                    var hash2 = md5.ComputeHash(stream2);
-                    return hash1.SequenceEqual(hash2);
-                }
-            }
-        }
+        
 
         /// <summary>
         /// ファイルをevidenceディレクトリにコピーします。
@@ -202,6 +190,34 @@ namespace EvidenceSupportTool.Services
                 Directory.CreateDirectory(destDir);
             }
             File.Copy(sourceFullPath, destFullPath, true);
+        }
+
+        /// <summary>
+        /// バイト配列をevidenceディレクトリ内のファイルに追記または新規作成します。
+        /// </summary>
+        private void CopyBytesToEvidence(byte[] bytes, string evidenceRootPath, string relativePath)
+        {
+            if (bytes == null || bytes.Length == 0) return;
+
+            // 差分が検出された場合にのみevidencePath ディレクトリを作成
+            if (!Directory.Exists(evidenceRootPath))
+            {
+                Directory.CreateDirectory(evidenceRootPath);
+            }
+
+            string destFullPath = Path.Combine(evidenceRootPath, relativePath);
+            string destDir = Path.GetDirectoryName(destFullPath);
+
+            if (!Directory.Exists(destDir))
+            {
+                Directory.CreateDirectory(destDir);
+            }
+
+            // ファイルが存在する場合は追記、存在しない場合は新規作成
+            using (FileStream fs = new FileStream(destFullPath, FileMode.Append, FileAccess.Write))
+            {
+                fs.Write(bytes, 0, bytes.Length);
+            }
         }
     }
 }

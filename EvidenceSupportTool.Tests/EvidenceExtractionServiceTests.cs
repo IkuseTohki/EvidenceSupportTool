@@ -149,7 +149,8 @@ namespace EvidenceSupportTool.Tests
         [TestMethod]
         public void ExtractEvidence_ShouldDetectChangesAndCopyDifferences()
         {
-            // テストの観点: snapshot1とsnapshot2を比較し、変更されたファイルと新規追加されたファイルをevidenceディレクトリにコピーすること。
+            // テストの観点: snapshot1とsnapshot2を比較し、snapshot1のファイルサイズ以降のデータがevidenceディレクトリにコピーされること。
+            // 新規追加ファイルはevidenceディレクトリにコピーされること。
             // 差分がある場合はtrueを返すこと。
 
             // Arrange
@@ -159,7 +160,7 @@ namespace EvidenceSupportTool.Tests
 
             // snapshot1の準備
             Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target1"));
-            File.WriteAllText(Path.Combine(snapshot1Dir, "Target1", "file1.log"), "Content A"); // 変更されるファイル
+            File.WriteAllText(Path.Combine(snapshot1Dir, "Target1", "file1.log"), "Content A\n"); // 変更されるファイル (改行で終わる)
             Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target2"));
             File.WriteAllText(Path.Combine(snapshot1Dir, "Target2", "file2.log"), "Content B"); // 変更されないファイル
             Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target4"));
@@ -167,7 +168,7 @@ namespace EvidenceSupportTool.Tests
 
             // snapshot2の準備
             Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target1"));
-            File.WriteAllText(Path.Combine(snapshot2Dir, "Target1", "file1.log"), "Content A - Changed"); // 変更後
+            File.WriteAllText(Path.Combine(snapshot2Dir, "Target1", "file1.log"), "Content A\nContent A - Changed\n"); // 変更後 (追記)
             Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target2"));
             File.WriteAllText(Path.Combine(snapshot2Dir, "Target2", "file2.log"), "Content B"); // 変更なし
             Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target3"));
@@ -180,10 +181,10 @@ namespace EvidenceSupportTool.Tests
             // 1. 差分があったことを検証
             Assert.IsTrue(hasDifference, "差分が検出されるべきです。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
 
-            // 2. 変更されたファイルがコピーされていることを検証
+            // 2. 変更されたファイルの差分がコピーされていることを検証
             string changedFileInEvidence = Path.Combine(evidenceDir, "Target1", "file1.log");
-            Assert.IsTrue(File.Exists(changedFileInEvidence), "変更されたファイルがevidenceディレクトリにコピーされていません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
-            Assert.AreEqual("Content A - Changed", File.ReadAllText(changedFileInEvidence), "変更されたファイルの内容が一致しません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+            Assert.IsTrue(File.Exists(changedFileInEvidence), "変更されたファイルの差分がevidenceディレクトリにコピーされていません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+            Assert.AreEqual("Content A - Changed\n", File.ReadAllText(changedFileInEvidence), "変更されたファイルの差分内容が一致しません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
 
             // 3. 新規追加されたファイルがコピーされていることを検証
             string newFileInEvidence = Path.Combine(evidenceDir, "Target3", "file3.log");
@@ -318,7 +319,7 @@ namespace EvidenceSupportTool.Tests
             Assert.IsTrue(hasDifference, "行が追加されたファイルで差分が検出されるべきです。");
             string evidenceFilePath = Path.Combine(evidenceDir, "Target1", "log.txt");
             Assert.IsTrue(File.Exists(evidenceFilePath), "変更されたファイルがevidenceディレクトリにコピーされていません。");
-            Assert.AreEqual("Line 1\nLine 2\nLine 3", File.ReadAllText(evidenceFilePath), "コピーされたファイルの内容が一致しません。");
+            Assert.AreEqual("\nLine 3", File.ReadAllText(evidenceFilePath), "コピーされたファイルの内容が一致しません。");
         }
 
         [TestMethod]
