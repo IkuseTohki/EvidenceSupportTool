@@ -1,8 +1,8 @@
-// MonitoringService.cs
-
 using EvidenceSupportTool.Models;
 using System.Collections.Generic;
-using System.Linq; // For .RemoveAll()
+using System.Linq;
+using System.IO;
+using System;
 
 namespace EvidenceSupportTool.Services
 {
@@ -11,13 +11,33 @@ namespace EvidenceSupportTool.Services
     /// </summary>
     public class MonitoringService : IMonitoringService
     {
+        private readonly IConfigService _configService;
+        private readonly IUserInteractionService _userInteractionService;
+        private readonly IEvidenceExtractionService _evidenceExtractionService;
         private readonly List<MonitoringTarget> _monitoringTargets;
-        private bool _isMonitoringActive; // 監視がアクティブかどうかを示すフラグ
+        private bool _isMonitoringActive;
 
-        public MonitoringService()
+        /// <summary>
+        /// ステータスの変更を通知するイベントです。
+        /// </summary>
+        public event Action<string> StatusChanged;
+
+        /// <summary>
+        /// MonitoringServiceの新しいインスタンスを初期化します。
+        /// </summary>
+        /// <param name="configService">設定情報を提供するサービス。</param>
+        /// <param name="userInteractionService">ユーザーとの対話（UI通知）を提供するサービス。</param>
+        /// <param name="evidenceExtractionService">エビデンス抽出処理を提供するサービス。</param>
+        public MonitoringService(
+            IConfigService configService, 
+            IUserInteractionService userInteractionService,
+            IEvidenceExtractionService evidenceExtractionService)
         {
+            _configService = configService;
+            _userInteractionService = userInteractionService;
+            _evidenceExtractionService = evidenceExtractionService;
             _monitoringTargets = new List<MonitoringTarget>();
-            _isMonitoringActive = false; // 初期状態は非アクティブ
+            _isMonitoringActive = false;
         }
 
         /// <summary>
@@ -32,19 +52,32 @@ namespace EvidenceSupportTool.Services
         /// <summary>
         /// 現在登録されているすべての監視対象を取得します。
         /// </summary>
-        /// <returns>監視対象のリスト。</returns>
+        /// <returns>監視対象の読み取り専用リスト。</returns>
         public IReadOnlyList<MonitoringTarget> GetMonitoringTargets()
         {
             return _monitoringTargets.AsReadOnly();
         }
 
         /// <summary>
-        /// 監視を開始します。
+        /// 監視プロセスを開始します。
         /// </summary>
-        public void StartMonitoring()
+        public void Start()
         {
+            if (_isMonitoringActive)
+            {
+                return;
+            }
+
             _isMonitoringActive = true;
-            // TODO: 実際の監視開始ロジックを実装
+            _monitoringTargets.Clear();
+
+            AppSettings appSettings = _configService.GetAppSettings();
+            IEnumerable<MonitoringTarget> initialTargets = _configService.GetMonitoringTargets();
+            _monitoringTargets.AddRange(initialTargets);
+
+            // TODO: 代替案に基づき、snapshot1フォルダにファイルをコピーする処理を実装
+
+            OnStatusChanged("監視を開始しました。");
         }
 
         /// <summary>
@@ -57,12 +90,24 @@ namespace EvidenceSupportTool.Services
         }
 
         /// <summary>
-        /// 監視を停止します。
+        /// 監視プロセスを停止します。
         /// </summary>
-        public void StopMonitoring()
+        public void Stop()
         {
+            if (!_isMonitoringActive)
+            {
+                return;
+            }
+
             _isMonitoringActive = false;
-            // TODO: 実際の監視停止ロジックを実装
+
+            // TODO: 代替案に基づき、snapshot2フォルダにファイルをコピーし、
+            // snapshot1フォルダと比較してevidenceを作成する処理を実装
+
+            // 仮実装: 差分がなかったことにして通知する
+            _userInteractionService.ShowMessage("差分はありませんでした。");
+
+            OnStatusChanged("監視を停止しました。");
         }
 
         /// <summary>
@@ -74,6 +119,15 @@ namespace EvidenceSupportTool.Services
         {
             int removedCount = _monitoringTargets.RemoveAll(t => t.Name == name);
             return removedCount > 0;
+        }
+
+        /// <summary>
+        /// StatusChangedイベントを発行します。
+        /// </summary>
+        /// <param name="status">通知するステータスメッセージ。</param>
+        protected virtual void OnStatusChanged(string status)
+        {
+            StatusChanged?.Invoke(status);
         }
     }
 }
