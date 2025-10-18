@@ -18,6 +18,11 @@ namespace EvidenceSupportTool.Services
             _userInteractionService = userInteractionService;
         }
 
+        /// <summary>
+        /// 監視対象のログファイルのスナップショットを作成します。
+        /// </summary>
+        /// <param name="snapshotPath">スナップショットを保存するディレクトリのパス。</param>
+        /// <param name="targets">監視対象のリスト。</param>
         public void CreateSnapshot(string snapshotPath, IEnumerable<MonitoringTarget> targets)
         {
             try
@@ -78,6 +83,14 @@ namespace EvidenceSupportTool.Services
             }
         }
 
+        /// <summary>
+        /// 2つのスナップショットを比較し、差分（新規追加されたログエントリ）を抽出してevidencePathに保存します。
+        /// </summary>
+        /// <param name="snapshot1Path">監視開始時のスナップショットのパス。</param>
+        /// <param name="snapshot2Path">監視停止時のスナップショットのパス。</param>
+        /// <param name="evidencePath">エビデンスを保存するパス。</param>
+        /// <param name="keepSnapshot">スナップショットを保持するかどうか。</param>
+        /// <returns>差分が検出された場合はtrue、それ以外はfalse。</returns>
         public bool ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath, bool keepSnapshot)
         {
             bool hasDifference = false;
@@ -120,20 +133,27 @@ namespace EvidenceSupportTool.Services
                     }
                 }
 
+                // snapshot1にのみ存在するファイル (削除されたファイル) はevidenceにはコピーしない
+
                 // スナップショットの削除
                 if (!keepSnapshot)
                 {
-                    if (Directory.Exists(snapshot1Path))
+                    try
                     {
-                        Directory.Delete(snapshot1Path, true);
+                        if (Directory.Exists(snapshot1Path))
+                        {
+                            Directory.Delete(snapshot1Path, true);
+                        }
+                        if (Directory.Exists(snapshot2Path))
+                        {
+                            Directory.Delete(snapshot2Path, true);
+                        }
                     }
-                    if (Directory.Exists(snapshot2Path))
+                    catch (Exception ex)
                     {
-                        Directory.Delete(snapshot2Path, true);
+                        _userInteractionService.ShowError($"スナップショットの削除中にエラーが発生しました: {ex.Message}");
                     }
                 }
-
-                // snapshot1にのみ存在するファイル (削除されたファイル) はevidenceにはコピーしない
 
                 return hasDifference;
             }
@@ -144,6 +164,11 @@ namespace EvidenceSupportTool.Services
             }
         }
 
+        /// <summary>
+        /// パスパターン内の日付フォーマット（{YYYY}, {MM}, {DD}）を現在の日付で解決します。
+        /// </summary>
+        /// <param name="pathPattern">日付フォーマットを含むパスパターン。</param>
+        /// <returns>日付フォーマットが解決されたパス。</returns>
         private string ResolveDateFormats(string pathPattern)
         {
             var today = DateTime.Now;
@@ -174,6 +199,9 @@ namespace EvidenceSupportTool.Services
         /// <summary>
         /// ファイルをevidenceディレクトリにコピーします。
         /// </summary>
+        /// <param name="sourceFullPath">コピー元ファイルのフルパス。</param>
+        /// <param name="evidenceRootPath">エビデンスルートディレクトリのパス。</param>
+        /// <param name="relativePath">エビデンスルートからの相対パス。</param>
         private void CopyFileToEvidence(string sourceFullPath, string evidenceRootPath, string relativePath)
         {
             // 差分が検出された場合にのみevidencePath ディレクトリを作成
@@ -195,6 +223,9 @@ namespace EvidenceSupportTool.Services
         /// <summary>
         /// バイト配列をevidenceディレクトリ内のファイルに追記または新規作成します。
         /// </summary>
+        /// <param name="bytes">追記するバイトデータ。</param>
+        /// <param name="evidenceRootPath">エビデンスルートディレクトリのパス。</param>
+        /// <param name="relativePath">エビデンスルートからの相対パス。</param>
         private void CopyBytesToEvidence(byte[] bytes, string evidenceRootPath, string relativePath)
         {
             if (bytes == null || bytes.Length == 0) return;
