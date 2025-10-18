@@ -19,8 +19,13 @@ namespace EvidenceSupportTool.Tests
             public AppSettings AppSettings { get; set; } = new AppSettings { EvidenceSavePath = "C:\\TempEvidence", KeepSnapshot = false };
             public IEnumerable<MonitoringTarget> MonitoringTargets { get; set; } = new List<MonitoringTarget>();
 
-            public AppSettings GetAppSettings() => AppSettings;
+            public AppSettings GetAppSettings() => new AppSettings { EvidenceSavePath = AppSettings.EvidenceSavePath, KeepSnapshot = AppSettings.KeepSnapshot };
             public IEnumerable<MonitoringTarget> GetMonitoringTargets() => MonitoringTargets;
+
+            public void SetKeepSnapshot(bool value)
+            {
+                AppSettings = new AppSettings { EvidenceSavePath = AppSettings.EvidenceSavePath, KeepSnapshot = value };
+            }
         }
 
         // IUserInteractionServiceのモッククラス
@@ -37,7 +42,7 @@ namespace EvidenceSupportTool.Tests
         private class MockEvidenceExtractionService : IEvidenceExtractionService
         {
             public List<(string snapshotPath, IEnumerable<MonitoringTarget> targets)> CreateSnapshotCalls { get; } = new();
-            public List<(string snapshot1Path, string snapshot2Path, string evidencePath)> ExtractEvidenceCalls { get; } = new();
+            public List<(string snapshot1Path, string snapshot2Path, string evidencePath, bool keepSnapshot)> ExtractEvidenceCalls { get; } = new();
             public bool ExtractEvidenceReturnValue { get; set; } = false;
 
             public void CreateSnapshot(string snapshotPath, IEnumerable<MonitoringTarget> targets)
@@ -45,17 +50,17 @@ namespace EvidenceSupportTool.Tests
                 CreateSnapshotCalls.Add((snapshotPath, targets));
             }
 
-            public bool ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
+            public bool ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath, bool keepSnapshot)
             {
-                ExtractEvidenceCalls.Add((snapshot1Path, snapshot2Path, evidencePath));
+                ExtractEvidenceCalls.Add((snapshot1Path, snapshot2Path, evidencePath, keepSnapshot));
                 return ExtractEvidenceReturnValue;
             }
         }
 
-        private MockConfigService _mockConfigService;
-        private MockUserInteractionService _mockUserInteractionService;
-        private MockEvidenceExtractionService _mockEvidenceExtractionService;
-        private List<string> _receivedStatuses;
+        private MockConfigService _mockConfigService = null!;
+        private MockUserInteractionService _mockUserInteractionService = null!;
+        private MockEvidenceExtractionService _mockEvidenceExtractionService = null!;
+        private List<string> _receivedStatuses = null!;
 
         [TestInitialize]
         public void TestInitialize()
@@ -230,6 +235,7 @@ namespace EvidenceSupportTool.Tests
             // テストの観点: ExtractEvidenceがfalseを返した場合（差分なし）、ユーザーに通知されること。
             // Arrange
             _mockEvidenceExtractionService.ExtractEvidenceReturnValue = false; // 差分なしをシミュレート
+            _mockConfigService.SetKeepSnapshot(false); // Add this for testing keepSnapshot
             var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
             monitoringService.Start();
 
@@ -239,6 +245,9 @@ namespace EvidenceSupportTool.Tests
             // Assert
             Assert.AreEqual(1, _mockUserInteractionService.ShowMessageCalls.Count);
             Assert.AreEqual("差分はありませんでした。", _mockUserInteractionService.ShowMessageCalls[0]);
+            Assert.AreEqual(1, _mockEvidenceExtractionService.ExtractEvidenceCalls.Count);
+            var (_, _, _, keepSnapshot) = _mockEvidenceExtractionService.ExtractEvidenceCalls[0];
+            Assert.IsFalse(keepSnapshot);
         }
 
         [TestMethod]
@@ -274,6 +283,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: Stop時にsnapshot2作成とevidence抽出が適切な引数で呼ばれること。
             // Arrange
+            _mockConfigService.SetKeepSnapshot(true); // Add this for testing keepSnapshot
             var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
             var targets = new List<MonitoringTarget> { new MonitoringTarget { Name = "Test", PathPattern = "C:\\test.log" } };
             _mockConfigService.MonitoringTargets = targets;
@@ -290,10 +300,11 @@ namespace EvidenceSupportTool.Tests
 
             // 2. evidenceが抽出されることの検証
             Assert.AreEqual(1, _mockEvidenceExtractionService.ExtractEvidenceCalls.Count);
-            var (s1Path, s2Path, evPath) = _mockEvidenceExtractionService.ExtractEvidenceCalls[0];
+            var (s1Path, s2Path, evPath, keepSnapshot) = _mockEvidenceExtractionService.ExtractEvidenceCalls[0]; // Modified
             StringAssert.Contains(s1Path, "snapshot1");
             StringAssert.Contains(s2Path, "snapshot2");
             StringAssert.Contains(evPath, "evidence");
+            Assert.IsTrue(keepSnapshot); // New
         }
 
         [TestMethod]
@@ -302,6 +313,7 @@ namespace EvidenceSupportTool.Tests
             // テストの観点: ExtractEvidenceがtrueを返した場合（差分あり）、ユーザーに通知されないこと。
             // Arrange
             _mockEvidenceExtractionService.ExtractEvidenceReturnValue = true; // 差分ありをシミュレート
+            _mockConfigService.SetKeepSnapshot(true); // Add this for testing keepSnapshot
             var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
             monitoringService.Start();
 
@@ -310,6 +322,13 @@ namespace EvidenceSupportTool.Tests
 
             // Assert
             Assert.AreEqual(0, _mockUserInteractionService.ShowMessageCalls.Count);
+            Assert.AreEqual(1, _mockEvidenceExtractionService.ExtractEvidenceCalls.Count);
+            var (_, _, _, keepSnapshot) = _mockEvidenceExtractionService.ExtractEvidenceCalls[0];
+            Assert.IsTrue(keepSnapshot); // New
         }
+
+        
+
+        
     }
 }

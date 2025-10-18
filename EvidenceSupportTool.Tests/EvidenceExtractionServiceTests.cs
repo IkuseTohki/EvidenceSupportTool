@@ -5,21 +5,34 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System;
+using System.Text.RegularExpressions; // For Regex
 
 namespace EvidenceSupportTool.Tests
 {
     [TestClass]
     public class EvidenceExtractionServiceTests
     {
-        private string _testRoot;
-        private EvidenceExtractionService _service;
+        // IUserInteractionServiceのモッククラス
+        private class MockUserInteractionService : IUserInteractionService
+        {
+            public List<string> ShowMessageCalls { get; } = new List<string>();
+            public List<string> ShowErrorCalls { get; } = new List<string>();
+
+            public void ShowMessage(string message) => ShowMessageCalls.Add(message);
+            public void ShowError(string message) => ShowErrorCalls.Add(message);
+        }
+
+        private string _testRoot = null!;
+        private EvidenceExtractionService _service = null!;
+        private IUserInteractionService _mockUserInteractionService = null!; 
 
         [TestInitialize]
         public void TestInitialize()
         {
             _testRoot = Path.Combine(Path.GetTempPath(), "EESTests_" + Path.GetRandomFileName());
             Directory.CreateDirectory(_testRoot);
-            _service = new EvidenceExtractionService();
+            _mockUserInteractionService = new MockUserInteractionService(); 
+            _service = new EvidenceExtractionService(_mockUserInteractionService); // Modified
         }
 
         [TestCleanup]
@@ -62,7 +75,7 @@ namespace EvidenceSupportTool.Tests
 
             Assert.IsTrue(Directory.Exists(expectedDestDir), "ターゲットごとのサブディレクトリが作成されていません。");
             Assert.IsTrue(File.Exists(expectedDestFile), "ファイルがコピーされていません。");
-            Assert.AreEqual("This is a test log.", File.ReadAllText(expectedDestFile), "コピーされたファイルの内容が一致しません。");
+            Assert.AreEqual("This is a test log.", File.ReadAllText(expectedDestFile), "コピーされたファイルの内容が一致しません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
         }
 
         [TestMethod]
@@ -93,7 +106,7 @@ namespace EvidenceSupportTool.Tests
 
             // Assert
             string expectedDestFile = Path.Combine(snapshotDir, "DateLog", "date_test.log");
-            Assert.IsTrue(File.Exists(expectedDestFile), "日付フォーマットが解決されたファイルがコピーされていません。");
+            Assert.IsTrue(File.Exists(expectedDestFile), "日付フォーマットが解決されたファイルがコピーされていません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
             Assert.AreEqual("Date format test.", File.ReadAllText(expectedDestFile));
         }
 
@@ -126,11 +139,174 @@ namespace EvidenceSupportTool.Tests
             string expectedFileB = Path.Combine(expectedDestDir, "wildcard_b.log");
             string unexpectedFile = Path.Combine(expectedDestDir, "other.txt");
 
-            Assert.IsTrue(File.Exists(expectedFileA), "ワイルドカードに一致するファイルAがコピーされていません。");
+            Assert.IsTrue(File.Exists(expectedFileA), "ワイルドカードに一致するファイルAがコピーされていません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
             Assert.AreEqual("Wildcard A", File.ReadAllText(expectedFileA));
-            Assert.IsTrue(File.Exists(expectedFileB), "ワイルドカードに一致するファイルBがコピーされていません。");
+            Assert.IsTrue(File.Exists(expectedFileB), "ワイルドカードに一致するファイルBがコピーされていません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
             Assert.AreEqual("Wildcard B", File.ReadAllText(expectedFileB));
-            Assert.IsFalse(File.Exists(unexpectedFile), "ワイルドカードに一致しないファイルがコピーされています。");
+            Assert.IsFalse(File.Exists(unexpectedFile), "ワイルドカードに一致しないファイルがコピーされています。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+        }
+
+        [TestMethod]
+        public void ExtractEvidence_ShouldDetectChangesAndCopyDifferences()
+        {
+            // テストの観点: snapshot1とsnapshot2を比較し、変更されたファイルと新規追加されたファイルをevidenceディレクトリにコピーすること。
+            // 差分がある場合はtrueを返すこと。
+
+            // Arrange
+            string snapshot1Dir = Path.Combine(_testRoot, "snapshot1");
+            string snapshot2Dir = Path.Combine(_testRoot, "snapshot2");
+            string evidenceDir = Path.Combine(_testRoot, "evidence");
+
+            // snapshot1の準備
+            Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target1"));
+            File.WriteAllText(Path.Combine(snapshot1Dir, "Target1", "file1.log"), "Content A"); // 変更されるファイル
+            Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target2"));
+            File.WriteAllText(Path.Combine(snapshot1Dir, "Target2", "file2.log"), "Content B"); // 変更されないファイル
+            Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target4"));
+            File.WriteAllText(Path.Combine(snapshot1Dir, "Target4", "file4.log"), "Content D"); // 削除されるファイル
+
+            // snapshot2の準備
+            Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target1"));
+            File.WriteAllText(Path.Combine(snapshot2Dir, "Target1", "file1.log"), "Content A - Changed"); // 変更後
+            Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target2"));
+            File.WriteAllText(Path.Combine(snapshot2Dir, "Target2", "file2.log"), "Content B"); // 変更なし
+            Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target3"));
+            File.WriteAllText(Path.Combine(snapshot2Dir, "Target3", "file3.log"), "Content C - New"); // 新規追加ファイル
+
+            // Act
+            bool hasDifference = _service.ExtractEvidence(snapshot1Dir, snapshot2Dir, evidenceDir, false); // Modified
+
+            // Assert
+            // 1. 差分があったことを検証
+            Assert.IsTrue(hasDifference, "差分が検出されるべきです。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+
+            // 2. 変更されたファイルがコピーされていることを検証
+            string changedFileInEvidence = Path.Combine(evidenceDir, "Target1", "file1.log");
+            Assert.IsTrue(File.Exists(changedFileInEvidence), "変更されたファイルがevidenceディレクトリにコピーされていません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+            Assert.AreEqual("Content A - Changed", File.ReadAllText(changedFileInEvidence), "変更されたファイルの内容が一致しません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+
+            // 3. 新規追加されたファイルがコピーされていることを検証
+            string newFileInEvidence = Path.Combine(evidenceDir, "Target3", "file3.log");
+            Assert.IsTrue(File.Exists(newFileInEvidence), "新規追加されたファイルがevidenceディレクトリにコピーされていません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+            Assert.AreEqual("Content C - New", File.ReadAllText(newFileInEvidence), "新規追加されたファイルの内容が一致しません。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+
+            // 4. 変更されていないファイルがコピーされていないことを検証
+            string unchangedFileInEvidence = Path.Combine(evidenceDir, "Target2", "file2.log");
+            Assert.IsFalse(File.Exists(unchangedFileInEvidence), "変更されていないファイルがevidenceディレクトリにコピーされています。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+
+            // 5. 削除されたファイルがコピーされていないことを検証
+            string deletedFileInEvidence = Path.Combine(evidenceDir, "Target4", "file4.log");
+            Assert.IsFalse(File.Exists(deletedFileInEvidence), "削除されたファイルがevidenceディレクトリにコピーされています。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+        }
+
+        [TestMethod]
+        public void ExtractEvidence_ShouldReturnFalseWhenNoChanges()
+        {
+            // テストの観点: snapshot1とsnapshot2に差分がない場合、falseを返すこと。
+
+            // Arrange
+            string snapshot1Dir = Path.Combine(_testRoot, "snapshot1_nochange");
+            string snapshot2Dir = Path.Combine(_testRoot, "snapshot2_nochange");
+            string evidenceDir = Path.Combine(_testRoot, "evidence_nochange");
+
+            // snapshot1の準備
+            Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target1"));
+            File.WriteAllText(Path.Combine(snapshot1Dir, "Target1", "file1.log"), "Content A");
+
+            // snapshot2の準備 (snapshot1と全く同じ内容)
+            Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target1"));
+            File.WriteAllText(Path.Combine(snapshot2Dir, "Target1", "file1.log"), "Content A");
+
+            // Act
+            bool hasDifference = _service.ExtractEvidence(snapshot1Dir, snapshot2Dir, evidenceDir, false); // Modified
+
+            // Assert
+            Assert.IsFalse(hasDifference, "差分がない場合、falseが返されるべきです。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+            Assert.IsFalse(Directory.Exists(evidenceDir), "差分がない場合、evidenceディレクトリは作成されないべきです。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+        }
+
+        [TestMethod]
+        public void CreateSnapshot_ShouldCallShowErrorOnException()
+        {
+            // テストの観点: CreateSnapshotメソッド内でファイル操作エラーが発生した場合に、IUserInteractionService.ShowErrorが呼び出されること。
+
+            // Arrange
+            string invalidSnapshotPath = "Z:\\non_existent_drive\\snapshot"; // 存在しないドライブ
+            var targets = new List<MonitoringTarget>
+            {
+                new MonitoringTarget { Name = "AppLog", PathPattern = "C:\\valid\\path\\test.log" } // このパスは実際には使われないが、引数として必要
+            };
+
+            // Act
+            _service.CreateSnapshot(invalidSnapshotPath, targets);
+
+            // Assert
+            Assert.AreEqual(1, ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.Count, "エラー発生時にShowErrorが呼び出されていません。");
+            StringAssert.Contains(((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls[0], "スナップショットの作成中にエラーが発生しました");
+        }
+
+        [TestMethod]
+        public void ExtractEvidence_ShouldCallShowErrorOnException()
+        {
+            // テストの観点: ExtractEvidenceメソッド内でファイル操作エラーが発生した場合に、IUserInteractionService.ShowErrorが呼び出されること。
+
+            // Arrange
+            string invalidSnapshot1Path = "Z:\\non_existent_drive\\snapshot1"; // 存在しないドライブ
+            string snapshot2Path = Path.Combine(_testRoot, "snapshot2");
+            string evidencePath = Path.Combine(_testRoot, "evidence");
+
+            // Act
+            _service.ExtractEvidence(invalidSnapshot1Path, snapshot2Path, evidencePath, false); // Add keepSnapshot
+
+            // Assert
+            Assert.AreEqual(1, ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.Count, "エラー発生時にShowErrorが呼び出されていません。");
+            StringAssert.Contains(((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls[0], "エビデンスの抽出中にエラーが発生しました");
+        }
+
+        [TestMethod]
+        public void ExtractEvidence_ShouldDeleteSnapshotsWhenKeepSnapshotIsFalse()
+        {
+            // テストの観点: KeepSnapshotがfalseの場合、ExtractEvidence実行後にsnapshot1とsnapshot2ディレクトリが削除されること。
+
+            // Arrange
+            string snapshot1Dir = Path.Combine(_testRoot, "snapshot1_delete");
+            string snapshot2Dir = Path.Combine(_testRoot, "snapshot2_delete");
+            string evidenceDir = Path.Combine(_testRoot, "evidence_delete");
+
+            Directory.CreateDirectory(snapshot1Dir);
+            File.WriteAllText(Path.Combine(snapshot1Dir, "file.log"), "content");
+            Directory.CreateDirectory(snapshot2Dir);
+            File.WriteAllText(Path.Combine(snapshot2Dir, "file.log"), "content");
+
+            // Act
+            _service.ExtractEvidence(snapshot1Dir, snapshot2Dir, evidenceDir, false); // KeepSnapshot = false
+
+            // Assert
+            Assert.IsFalse(Directory.Exists(snapshot1Dir), "KeepSnapshotがfalseの場合、snapshot1が削除されていません。");
+            Assert.IsFalse(Directory.Exists(snapshot2Dir), "KeepSnapshotがfalseの場合、snapshot2が削除されていません。");
+        }
+
+        [TestMethod]
+        public void ExtractEvidence_ShouldNotDeleteSnapshotsWhenKeepSnapshotIsTrue()
+        {
+            // テストの観点: KeepSnapshotがtrueの場合、ExtractEvidence実行後にsnapshot1とsnapshot2ディレクトリが残ること。
+
+            // Arrange
+            string snapshot1Dir = Path.Combine(_testRoot, "snapshot1_keep");
+            string snapshot2Dir = Path.Combine(_testRoot, "snapshot2_keep");
+            string evidenceDir = Path.Combine(_testRoot, "evidence_keep");
+
+            Directory.CreateDirectory(snapshot1Dir);
+            File.WriteAllText(Path.Combine(snapshot1Dir, "file.log"), "content");
+            Directory.CreateDirectory(snapshot2Dir);
+            File.WriteAllText(Path.Combine(snapshot2Dir, "file.log"), "content");
+
+            // Act
+            _service.ExtractEvidence(snapshot1Dir, snapshot2Dir, evidenceDir, true); // KeepSnapshot = true
+
+            // Assert
+            Assert.IsTrue(Directory.Exists(snapshot1Dir), "KeepSnapshotがtrueの場合、snapshot1が削除されています。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+            Assert.IsTrue(Directory.Exists(snapshot2Dir), "KeepSnapshotがtrueの場合、snapshot2が削除されています。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
         }
     }
 }

@@ -122,8 +122,11 @@ namespace EvidenceSupportTool.Services
             // snapshot2を作成
             _evidenceExtractionService.CreateSnapshot(snapshot2Path, _monitoringTargets);
 
+            // KeepSnapshot設定を取得
+            bool keepSnapshot = _configService.GetAppSettings().KeepSnapshot;
+
             // 差分を抽出し、結果に応じて通知
-            bool hasDifference = _evidenceExtractionService.ExtractEvidence(snapshot1Path, snapshot2Path, evidencePath);
+            bool hasDifference = _evidenceExtractionService.ExtractEvidence(snapshot1Path, snapshot2Path, evidencePath, keepSnapshot);
             if (!hasDifference)
             {
                 _userInteractionService.ShowMessage("差分はありませんでした。");
