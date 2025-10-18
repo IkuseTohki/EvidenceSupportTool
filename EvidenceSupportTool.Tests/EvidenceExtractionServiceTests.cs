@@ -225,25 +225,7 @@ namespace EvidenceSupportTool.Tests
             Assert.IsFalse(Directory.Exists(evidenceDir), "差分がない場合、evidenceディレクトリは作成されないべきです。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
         }
 
-        [TestMethod]
-        public void CreateSnapshot_ShouldCallShowErrorOnException()
-        {
-            // テストの観点: CreateSnapshotメソッド内でファイル操作エラーが発生した場合に、IUserInteractionService.ShowErrorが呼び出されること。
-
-            // Arrange
-            string invalidSnapshotPath = "Z:\\non_existent_drive\\snapshot"; // 存在しないドライブ
-            var targets = new List<MonitoringTarget>
-            {
-                new MonitoringTarget { Name = "AppLog", PathPattern = "C:\\valid\\path\\test.log" } // このパスは実際には使われないが、引数として必要
-            };
-
-            // Act
-            _service.CreateSnapshot(invalidSnapshotPath, targets);
-
-            // Assert
-            Assert.AreEqual(1, ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.Count, "エラー発生時にShowErrorが呼び出されていません。");
-            StringAssert.Contains(((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls[0], "スナップショットの作成中にエラーが発生しました");
-        }
+        
 
         [TestMethod]
         public void ExtractEvidence_ShouldCallShowErrorOnException()
@@ -307,6 +289,92 @@ namespace EvidenceSupportTool.Tests
             // Assert
             Assert.IsTrue(Directory.Exists(snapshot1Dir), "KeepSnapshotがtrueの場合、snapshot1が削除されています。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
             Assert.IsTrue(Directory.Exists(snapshot2Dir), "KeepSnapshotがtrueの場合、snapshot2が削除されています。エラーメッセージ: " + ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.FirstOrDefault());
+        }
+
+        [TestMethod]
+        public void CreateSnapshot_ShouldNotThrowExceptionWhenFileNotFound()
+        {
+            // テストの観点: 存在しない単一ファイルを指定した場合に例外がスローされず、ShowErrorも呼び出されないこと。
+
+            // Arrange
+            string nonExistentFilePath = Path.Combine(_testRoot, "non_existent.log");
+            var targets = new List<MonitoringTarget>
+            {
+                new MonitoringTarget { Name = "NonExistentLog", PathPattern = nonExistentFilePath }
+            };
+            string snapshotDir = Path.Combine(_testRoot, "snapshot");
+
+            // Act
+            _service.CreateSnapshot(snapshotDir, targets);
+
+            // Assert
+            Assert.AreEqual(0, ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.Count, "ファイルが見つからない場合にShowErrorが呼び出されました。");
+            Assert.IsFalse(Directory.Exists(Path.Combine(snapshotDir, "NonExistentLog")), "存在しないファイルのスナップショットディレクトリが作成されました。");
+        }
+
+        [TestMethod]
+        public void CreateSnapshot_ShouldNotThrowExceptionWhenDirectoryNotFound()
+        {
+            // テストの観点: 存在しないディレクトリ内のワイルドカードパスを指定した場合に例外がスローされず、ShowErrorも呼び出されないこと。
+
+            // Arrange
+            string nonExistentDirPath = Path.Combine(_testRoot, "non_existent_dir");
+            string nonExistentWildcardPath = Path.Combine(nonExistentDirPath, "*.log");
+            var targets = new List<MonitoringTarget>
+            {
+                new MonitoringTarget { Name = "NonExistentDirLog", PathPattern = nonExistentWildcardPath }
+            };
+            string snapshotDir = Path.Combine(_testRoot, "snapshot");
+
+            // Act
+            _service.CreateSnapshot(snapshotDir, targets);
+
+            // Assert
+            Assert.AreEqual(0, ((MockUserInteractionService)_mockUserInteractionService).ShowErrorCalls.Count, "ディレクトリが見つからない場合にShowErrorが呼び出されました。");
+            Assert.IsFalse(Directory.Exists(Path.Combine(snapshotDir, "NonExistentDirLog")), "存在しないディレクトリのスナップショットディレクトリが作成されました。");
+        }
+
+        [TestMethod]
+        public void CreateSnapshot_ShouldNotCopyAnyFileWhenFileNotFound()
+        {
+            // テストの観点: 存在しない単一ファイルを指定した場合に、スナップショットディレクトリに何もコピーされないこと。
+
+            // Arrange
+            string nonExistentFilePath = Path.Combine(_testRoot, "non_existent_file_to_copy.log");
+            var targets = new List<MonitoringTarget>
+            {
+                new MonitoringTarget { Name = "NonExistentFileTarget", PathPattern = nonExistentFilePath }
+            };
+            string snapshotDir = Path.Combine(_testRoot, "snapshot_no_copy_file");
+
+            // Act
+            _service.CreateSnapshot(snapshotDir, targets);
+
+            // Assert
+            string targetSnapshotDir = Path.Combine(snapshotDir, "NonExistentFileTarget");
+            Assert.IsFalse(Directory.Exists(targetSnapshotDir), "存在しないファイルのスナップショットディレクトリが作成されました。");
+        }
+
+        [TestMethod]
+        public void CreateSnapshot_ShouldNotCopyAnyFileWhenDirectoryNotFound()
+        {
+            // テストの観点: 存在しないディレクトリ内のワイルドカードパスを指定した場合に、スナップショットディレクトリに何もコピーされないこと。
+
+            // Arrange
+            string nonExistentDirPath = Path.Combine(_testRoot, "non_existent_dir_to_copy");
+            string nonExistentWildcardPath = Path.Combine(nonExistentDirPath, "*.log");
+            var targets = new List<MonitoringTarget>
+            {
+                new MonitoringTarget { Name = "NonExistentDirTarget", PathPattern = nonExistentWildcardPath }
+            };
+            string snapshotDir = Path.Combine(_testRoot, "snapshot_no_copy_dir");
+
+            // Act
+            _service.CreateSnapshot(snapshotDir, targets);
+
+            // Assert
+            string targetSnapshotDir = Path.Combine(snapshotDir, "NonExistentDirTarget");
+            Assert.IsFalse(Directory.Exists(targetSnapshotDir), "存在しないディレクトリのスナップショットディレクトリが作成されました。");
         }
     }
 }

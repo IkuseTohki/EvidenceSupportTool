@@ -45,8 +45,7 @@ namespace EvidenceSupportTool.Services
                         }
                         else
                         {
-                            // ディレクトリが存在しない場合はエラーとして扱う
-                            throw new DirectoryNotFoundException($"指定されたディレクトリが見つかりません: {directory}");
+                            filesToCopy = Enumerable.Empty<string>(); // ディレクトリが存在しない場合は空のリストを返す
                         }
                     }
                     else
@@ -58,8 +57,7 @@ namespace EvidenceSupportTool.Services
                         }
                         else
                         {
-                            // ファイルが存在しない場合はエラーとして扱う
-                            throw new FileNotFoundException($"指定されたファイルが見つかりません: {resolvedPathPattern}");
+                            filesToCopy = Enumerable.Empty<string>(); // ファイルが存在しない場合は空のリストを返す
                         }
                     }
 
