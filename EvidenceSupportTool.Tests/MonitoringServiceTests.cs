@@ -36,9 +36,11 @@ namespace EvidenceSupportTool.Tests
         // IEvidenceExtractionServiceのモッククラス
         private class MockEvidenceExtractionService : IEvidenceExtractionService
         {
+            public List<(string snapshotPath, IEnumerable<MonitoringTarget> targets)> CreateSnapshotCalls { get; } = new();
+
             public void CreateSnapshot(string snapshotPath, IEnumerable<MonitoringTarget> targets)
             {
-                // 何もしない
+                CreateSnapshotCalls.Add((snapshotPath, targets));
             }
 
             public void ExtractEvidence(string snapshot1Path, string snapshot2Path, string evidencePath)
@@ -233,6 +235,34 @@ namespace EvidenceSupportTool.Tests
             // Assert
             Assert.AreEqual(1, _mockUserInteractionService.ShowMessageCalls.Count);
             Assert.AreEqual("差分はありませんでした。", _mockUserInteractionService.ShowMessageCalls[0]);
+        }
+
+        [TestMethod]
+        public void Start_ShouldCreateEvidenceFolderAndCallCreateSnapshot()
+        {
+            // テストの観点: Start時にタイムスタンプ付きのフォルダパスを生成し、CreateSnapshotが適切な引数で呼ばれること。
+            // Arrange
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var targets = new List<MonitoringTarget> { new MonitoringTarget { Name = "Test", PathPattern = "C:\\test.log" } };
+            _mockConfigService.MonitoringTargets = targets;
+
+            // Act
+            monitoringService.Start();
+
+            // Assert
+            Assert.AreEqual(1, _mockEvidenceExtractionService.CreateSnapshotCalls.Count);
+            var (snapshotPath, calledTargets) = _mockEvidenceExtractionService.CreateSnapshotCalls[0];
+
+            // パスが期待通りか検証 (EvidenceSavePath と snapshot1 を含むか)
+            StringAssert.Contains(snapshotPath, _mockConfigService.AppSettings.EvidenceSavePath);
+            StringAssert.Contains(snapshotPath, "snapshot1");
+
+            // タイムスタンプ部分の検証 (yyyyMMdd_HHmmss の形式に近いか)
+            var dirName = new DirectoryInfo(Path.GetDirectoryName(snapshotPath)).Name;
+            Assert.IsTrue(System.Text.RegularExpressions.Regex.IsMatch(dirName, "^\\d{8}_\\d{6}$"));
+
+            // 渡されたターゲットが正しいか検証
+            CollectionAssert.AreEqual(targets, calledTargets.ToList());
         }
     }
 }

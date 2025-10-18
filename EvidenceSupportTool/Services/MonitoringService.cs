@@ -16,6 +16,7 @@ namespace EvidenceSupportTool.Services
         private readonly IEvidenceExtractionService _evidenceExtractionService;
         private readonly List<MonitoringTarget> _monitoringTargets;
         private bool _isMonitoringActive;
+        private string _currentEvidenceFolderPath = string.Empty;
 
         /// <summary>
         /// ステータスの変更を通知するイベントです。
@@ -75,7 +76,15 @@ namespace EvidenceSupportTool.Services
             IEnumerable<MonitoringTarget> initialTargets = _configService.GetMonitoringTargets();
             _monitoringTargets.AddRange(initialTargets);
 
-            // TODO: 代替案に基づき、snapshot1フォルダにファイルをコピーする処理を実装
+            // タイムスタンプ付きのフォルダパスを生成
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            _currentEvidenceFolderPath = Path.Combine(appSettings.EvidenceSavePath, timestamp);
+
+            // snapshot1のパスを構築
+            string snapshot1Path = Path.Combine(_currentEvidenceFolderPath, "snapshot1");
+
+            // スナップショット作成を委譲
+            _evidenceExtractionService.CreateSnapshot(snapshot1Path, _monitoringTargets);
 
             OnStatusChanged("監視を開始しました。");
         }
