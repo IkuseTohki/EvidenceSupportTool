@@ -1,68 +1,55 @@
-using EvidenceSupportTool.Models;
-using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using EvidenceSupportTool.Models;
 
 namespace EvidenceSupportTool.Services
 {
     /// <summary>
-    /// INIファイルを解析する責務を持つヘルパークラスです。
-    /// 特定のモデル（AppSettingsなど）には依存せず、汎用的なIniDataオブジェクトを生成します。
+    /// INIファイルを解析するヘルパークラスです。
     /// </summary>
     public class IniParser
     {
-        private readonly string _filePath;
-
-        public IniParser(string filePath)
-        {
-            _filePath = filePath;
-        }
-
         /// <summary>
-        /// INIファイルを解析し、IniDataオブジェクトを返します。
+        /// 指定されたINIファイルを解析し、IniDataオブジェクトを返します。
         /// </summary>
-        /// <returns>解析されたINIデータ</returns>
-        /// <exception cref="FileNotFoundException">指定されたINIファイルが見つからない場合</exception>
-        public IniData Parse()
+        /// <param name="filePath">解析するINIファイルのパス。</param>
+        /// <returns>解析されたINIデータを含むIniDataオブジェクト。</returns>
+        /// <exception cref="FileNotFoundException">指定されたファイルが見つからない場合にスローされます。</exception>
+        public IniData Parse(string filePath)
         {
-            if (!File.Exists(_filePath))
+            var iniData = new IniData();
+            if (!File.Exists(filePath))
             {
-                throw new FileNotFoundException("INI file not found.", _filePath);
+                throw new FileNotFoundException($"設定ファイルが見つかりません: {filePath}");
             }
 
-            var iniData = new IniData();
-            Dictionary<string, string>? currentSection = null;
-            string? currentSectionName = null;
-
-            foreach (var line in File.ReadAllLines(_filePath))
+            string currentSection = string.Empty;
+            foreach (string line in File.ReadAllLines(filePath))
             {
-                var trimmedLine = line.Trim();
+                string trimmedLine = line.Trim();
 
                 if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith(";"))
                 {
-                    continue; // Skip empty lines and comments
+                    continue; // 空行またはコメント行はスキップ
                 }
 
                 if (trimmedLine.StartsWith("[") && trimmedLine.EndsWith("]"))
                 {
-                    currentSectionName = trimmedLine.Substring(1, trimmedLine.Length - 2);
-                    currentSection = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    iniData.Sections[currentSectionName] = currentSection;
-                    continue;
+                    currentSection = trimmedLine.Substring(1, trimmedLine.Length - 2);
+                    iniData.Sections[currentSection] = new Dictionary<string, string>();
                 }
-
-                if (currentSection != null)
+                else if (currentSection != string.Empty)
                 {
-                    var parts = trimmedLine.Split('=', 2);
-                    if (parts.Length == 2)
+                    int separatorIndex = trimmedLine.IndexOf('=');
+                    if (separatorIndex > 0)
                     {
-                        var key = parts[0].Trim();
-                        var value = parts[1].Trim();
-                        currentSection[key] = value;
+                        string key = trimmedLine.Substring(0, separatorIndex).Trim();
+                        string value = trimmedLine.Substring(separatorIndex + 1).Trim();
+                        iniData.Sections[currentSection][key] = value;
                     }
                 }
             }
-
             return iniData;
         }
     }

@@ -292,6 +292,36 @@ namespace EvidenceSupportTool.Tests
         }
 
         [TestMethod]
+        public void ExtractEvidence_ShouldDetectLineAddedToFile()
+        {
+            // テストの観点: ファイルに行が追加された場合に差分が検出され、evidenceディレクトリにコピーされること。
+
+            // Arrange
+            string snapshot1Dir = Path.Combine(_testRoot, "snapshot1_line_added");
+            string snapshot2Dir = Path.Combine(_testRoot, "snapshot2_line_added");
+            string evidenceDir = Path.Combine(_testRoot, "evidence_line_added");
+
+            // snapshot1の準備
+            Directory.CreateDirectory(Path.Combine(snapshot1Dir, "Target1"));
+            string file1Path = Path.Combine(snapshot1Dir, "Target1", "log.txt");
+            File.WriteAllText(file1Path, "Line 1\nLine 2");
+
+            // snapshot2の準備 (行を追加)
+            Directory.CreateDirectory(Path.Combine(snapshot2Dir, "Target1"));
+            string file2Path = Path.Combine(snapshot2Dir, "Target1", "log.txt");
+            File.WriteAllText(file2Path, "Line 1\nLine 2\nLine 3");
+
+            // Act
+            bool hasDifference = _service.ExtractEvidence(snapshot1Dir, snapshot2Dir, evidenceDir, false);
+
+            // Assert
+            Assert.IsTrue(hasDifference, "行が追加されたファイルで差分が検出されるべきです。");
+            string evidenceFilePath = Path.Combine(evidenceDir, "Target1", "log.txt");
+            Assert.IsTrue(File.Exists(evidenceFilePath), "変更されたファイルがevidenceディレクトリにコピーされていません。");
+            Assert.AreEqual("Line 1\nLine 2\nLine 3", File.ReadAllText(evidenceFilePath), "コピーされたファイルの内容が一致しません。");
+        }
+
+        [TestMethod]
         public void CreateSnapshot_ShouldNotThrowExceptionWhenFileNotFound()
         {
             // テストの観点: 存在しない単一ファイルを指定した場合に例外がスローされず、ShowErrorも呼び出されないこと。

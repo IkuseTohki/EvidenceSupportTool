@@ -4,9 +4,22 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EvidenceSupportTool"
+        xmlns:vm="clr-namespace:EvidenceSupportTool.ViewModels"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Evidence Support Tool" Height="150" Width="300">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
+        <Border Grid.Row="0" BorderBrush="LightGray" BorderThickness="1" Margin="10" Padding="10">
+            <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" FontWeight="Bold"/>
+        </Border>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+            <Button Content="監視開始" Command="{Binding StartMonitoringCommand}" Width="100" Height="30" Margin="5"/>
+            <Button Content="監視停止" Command="{Binding StopMonitoringCommand}" Width="100" Height="30" Margin="5"/>
+        </StackPanel>
     </Grid>
 </Window>

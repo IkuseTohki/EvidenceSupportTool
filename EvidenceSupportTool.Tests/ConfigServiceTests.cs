@@ -10,7 +10,7 @@ namespace EvidenceSupportTool.Tests
         public void GetAppSettings_ShouldReadSettingsCorrectly()
         {
             // Arrange
-            var configService = new ConfigService(new IniParser("test_setting.ini"));
+            var configService = new ConfigService(new IniParser(), "test_setting.ini");
 
             // Act
             var settings = configService.GetAppSettings();
@@ -25,7 +25,7 @@ namespace EvidenceSupportTool.Tests
         public void GetMonitoringTargets_ShouldReadTargetsCorrectly()
         {
             // Arrange
-            var configService = new ConfigService(new IniParser("test_setting.ini"));
+            var configService = new ConfigService(new IniParser(), "test_setting.ini");
 
             // Act
             var targets = configService.GetMonitoringTargets().ToList(); // ToList() to materialize the IEnumerable

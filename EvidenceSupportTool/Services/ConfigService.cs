@@ -13,15 +13,17 @@ namespace EvidenceSupportTool.Services
     public class ConfigService : IConfigService
     {
         private readonly IniParser _parser;
+        private readonly string _settingsFilePath;
 
-        public ConfigService(IniParser parser)
+        public ConfigService(IniParser parser, string settingsFilePath = "setting.ini")
         {
             _parser = parser;
+            _settingsFilePath = settingsFilePath;
         }
 
         public AppSettings GetAppSettings()
         {
-            var iniData = _parser.Parse();
+            var iniData = _parser.Parse(_settingsFilePath);
 
             if (!iniData.Sections.TryGetValue("Settings", out var settingsSection))
             {
@@ -58,7 +60,7 @@ namespace EvidenceSupportTool.Services
 
         public IEnumerable<MonitoringTarget> GetMonitoringTargets()
         {
-            var iniData = _parser.Parse();
+            var iniData = _parser.Parse(_settingsFilePath);
 
             if (!iniData.Sections.TryGetValue("Targets", out var targetsSection))
             {
