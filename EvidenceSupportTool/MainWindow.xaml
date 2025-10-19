@@ -13,9 +13,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" BorderBrush="LightGray" BorderThickness="1" Margin="10" Padding="10">
-            <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="Bold"/>
-        </Border>
+        <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="Bold"/>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
             <Button Content="監視開始" Command="{Binding StartMonitoringCommand}" Width="100" Height="30" Margin="5"/>
