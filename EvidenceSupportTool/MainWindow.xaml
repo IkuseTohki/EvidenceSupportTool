@@ -6,7 +6,8 @@
         xmlns:local="clr-namespace:EvidenceSupportTool"
         xmlns:vm="clr-namespace:EvidenceSupportTool.ViewModels"
         mc:Ignorable="d"
-        Title="Evidence Support Tool" Height="150" Width="300">
+        Title="Evidence Support Tool" Height="150" Width="300"
+        Icon="/Resources/app_icon.ico">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>

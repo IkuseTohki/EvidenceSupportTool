@@ -1,5 +1,7 @@
 # EvidenceSupportTool
 
+![EvidenceSupportTool Icon](spec/assets/app_icon.svg)
+
 ## 概要
 
 EvidenceSupportTool は、指定したログファイルから対象部分のログエントリを抽出し、新しく追加されたログエントリを特定して出力することで、ユーザーが特定の作業やプロセスを証明するためのエビデンス収集を支援するアプリケーションです。

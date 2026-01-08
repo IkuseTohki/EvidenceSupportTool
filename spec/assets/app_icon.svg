@@ -1,0 +1,47 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#0056b3;stop-opacity:1" />
+        </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+        </filter>
+    </defs>
+    
+    <!-- Back of the box -->
+    <path d="M68 120 L188 120 L188 200 C188 208 182 216 172 216 L84 216 C74 216 68 208 68 200 Z" fill="#b0bec5"/>
+    <path d="M68 120 L88 150 L168 150 L188 120" fill="#cfd8dc"/>
+
+    <!-- File 1 (Left) -->
+    <g transform="translate(40, 60) rotate(-15)">
+        <rect x="0" y="0" width="40" height="56" rx="4" fill="white" stroke="#546E7A" stroke-width="2"/>
+        <line x1="10" y1="12" x2="30" y2="12" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="20" x2="30" y2="20" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="28" x2="24" y2="28" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- File 2 (Center/Right) -->
+    <g transform="translate(160, 50) rotate(10)">
+        <rect x="0" y="0" width="40" height="56" rx="4" fill="white" stroke="#546E7A" stroke-width="2"/>
+        <line x1="10" y1="12" x2="30" y2="12" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="20" x2="30" y2="20" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="28" x2="24" y2="28" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- File 3 (Entering) -->
+    <g transform="translate(108, 90)">
+        <rect x="0" y="0" width="40" height="56" rx="4" fill="white" stroke="#546E7A" stroke-width="2"/>
+        <path d="M28 0 L40 12 L40 0 Z" fill="#cfd8dc"/>
+        <line x1="10" y1="15" x2="25" y2="15" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="23" x2="30" y2="23" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+        <line x1="10" y1="31" x2="30" y2="31" stroke="#90A4AE" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- Front of the box -->
+    <path d="M48 150 L208 150 L192 216 C190 224 182 230 174 230 L82 230 C74 230 66 224 64 216 Z" fill="url(#grad1)" filter="url(#shadow)"/>
+    
+    <!-- Arrow indicating gathering -->
+    <path d="M128 40 L128 75" stroke="#4A90E2" stroke-width="4" stroke-linecap="round" stroke-dasharray="4 4" opacity="0.6"/>
+    <path d="M128 78 L123 70 M128 78 L133 70" stroke="#4A90E2" stroke-width="4" stroke-linecap="round" opacity="0.6" fill="none"/>
+</svg>
