@@ -7,6 +7,8 @@
         xmlns:vm="clr-namespace:EvidenceSupportTool.ViewModels"
         mc:Ignorable="d"
         Title="Evidence Support Tool" Height="150" Width="300"
+        MinWidth="150" MinHeight="150"
+        MaxWidth="600" MaxHeight="400"
         Icon="/Resources/app_icon.ico">
     <Grid>
         <Grid.RowDefinitions>
@@ -16,9 +18,9 @@
 
         <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="Bold"/>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+        <WrapPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">
             <Button Content="監視開始" Command="{Binding StartMonitoringCommand}" Width="100" Height="30" Margin="5"/>
             <Button Content="監視停止" Command="{Binding StopMonitoringCommand}" Width="100" Height="30" Margin="5"/>
-        </StackPanel>
+        </WrapPanel>
     </Grid>
 </Window>
