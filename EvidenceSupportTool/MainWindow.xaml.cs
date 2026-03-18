@@ -31,7 +31,8 @@ namespace EvidenceSupportTool
             var iniParser = new IniParser();
             var configService = new ConfigService(iniParser); // IniParserを渡す
             var evidenceExtractionService = new EvidenceExtractionService(userInteractionService);
-            var monitoringService = new MonitoringService(configService, userInteractionService, evidenceExtractionService);
+            var screenshotService = new ScreenshotService();
+            var monitoringService = new MonitoringService(configService, userInteractionService, evidenceExtractionService, screenshotService);
 
             this.DataContext = new MainViewModel(monitoringService, configService, userInteractionService);
         }

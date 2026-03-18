@@ -18,6 +18,7 @@ namespace EvidenceSupportTool.Services
         private readonly IConfigService _configService;
         private readonly IUserInteractionService _userInteractionService;
         private readonly IEvidenceExtractionService _evidenceExtractionService;
+        private readonly IScreenshotService _screenshotService;
         private readonly List<MonitoringTarget> _monitoringTargets;
         private bool _isMonitoringActive;
         private string _currentEvidenceFolderPath = string.Empty;
@@ -33,14 +34,17 @@ namespace EvidenceSupportTool.Services
         /// <param name="configService">設定情報を提供するサービス。</param>
         /// <param name="userInteractionService">ユーザーとの対話（UI通知）を提供するサービス。</param>
         /// <param name="evidenceExtractionService">エビデンス抽出処理を提供するサービス。</param>
+        /// <param name="screenshotService">スクリーンショット保存処理を提供するサービス。</param>
         public MonitoringService(
             IConfigService configService, 
             IUserInteractionService userInteractionService,
-            IEvidenceExtractionService evidenceExtractionService)
+            IEvidenceExtractionService evidenceExtractionService,
+            IScreenshotService screenshotService)
         {
             _configService = configService;
             _userInteractionService = userInteractionService;
             _evidenceExtractionService = evidenceExtractionService;
+            _screenshotService = screenshotService;
             _monitoringTargets = new List<MonitoringTarget>();
             _isMonitoringActive = false;
         }
@@ -84,6 +88,13 @@ namespace EvidenceSupportTool.Services
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             _currentEvidenceFolderPath = Path.Combine(appSettings.EvidenceSavePath, timestamp);
 
+            // スクリーンショット保存機能が有効な場合、監視を開始
+            if (appSettings.AutoSaveScreenshots)
+            {
+                string screenshotPath = Path.Combine(_currentEvidenceFolderPath, EvidenceFolderName, "screenshots");
+                _screenshotService.Start(screenshotPath);
+            }
+
             // snapshot1のパスを構築
             string snapshot1Path = Path.Combine(_currentEvidenceFolderPath, Snapshot1FolderName);
 
@@ -113,6 +124,9 @@ namespace EvidenceSupportTool.Services
             }
 
             _isMonitoringActive = false;
+
+            // スクリーンショット監視を停止
+            _screenshotService.Stop();
 
             // 各パスを構築
             string snapshot1Path = Path.Combine(_currentEvidenceFolderPath, Snapshot1FolderName);

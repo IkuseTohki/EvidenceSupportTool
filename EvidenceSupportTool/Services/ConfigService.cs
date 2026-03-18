@@ -32,6 +32,7 @@ namespace EvidenceSupportTool.Services
 
             string? evidenceSavePath = null;
             bool? keepSnapshot = null;
+            bool autoSaveScreenshots = false;
 
             if (settingsSection.TryGetValue("EvidenceSavePath", out var pathValue))
             {
@@ -46,6 +47,14 @@ namespace EvidenceSupportTool.Services
                 }
             }
 
+            if (settingsSection.TryGetValue("AutoSaveScreenshots", out var screenshotValue))
+            {
+                if (bool.TryParse(screenshotValue, out var result))
+                {
+                    autoSaveScreenshots = result;
+                }
+            }
+
             if (evidenceSavePath == null || keepSnapshot == null)
             {
                 throw new InvalidOperationException("[Settings] section is incomplete or invalid in the INI file.");
@@ -54,7 +63,8 @@ namespace EvidenceSupportTool.Services
             return new AppSettings
             {
                 EvidenceSavePath = evidenceSavePath,
-                KeepSnapshot = keepSnapshot.Value
+                KeepSnapshot = keepSnapshot.Value,
+                AutoSaveScreenshots = autoSaveScreenshots
             };
         }
 

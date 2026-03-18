@@ -19,7 +19,12 @@ namespace EvidenceSupportTool.Tests
             public AppSettings AppSettings { get; set; } = new AppSettings { EvidenceSavePath = "C:\\TempEvidence", KeepSnapshot = false };
             public IEnumerable<MonitoringTarget> MonitoringTargets { get; set; } = new List<MonitoringTarget>();
 
-            public AppSettings GetAppSettings() => new AppSettings { EvidenceSavePath = AppSettings.EvidenceSavePath, KeepSnapshot = AppSettings.KeepSnapshot };
+            public AppSettings GetAppSettings() => new AppSettings 
+            { 
+                EvidenceSavePath = AppSettings.EvidenceSavePath, 
+                KeepSnapshot = AppSettings.KeepSnapshot,
+                AutoSaveScreenshots = AppSettings.AutoSaveScreenshots
+            };
             public IEnumerable<MonitoringTarget> GetMonitoringTargets() => MonitoringTargets;
 
             public void SetKeepSnapshot(bool value)
@@ -57,9 +62,20 @@ namespace EvidenceSupportTool.Tests
             }
         }
 
+        // IScreenshotServiceのモッククラス
+        private class MockScreenshotService : IScreenshotService
+        {
+            public List<string> StartCalls { get; } = new();
+            public int StopCalls { get; private set; }
+
+            public void Start(string savePath) => StartCalls.Add(savePath);
+            public void Stop() => StopCalls++;
+        }
+
         private MockConfigService _mockConfigService = null!;
         private MockUserInteractionService _mockUserInteractionService = null!;
         private MockEvidenceExtractionService _mockEvidenceExtractionService = null!;
+        private MockScreenshotService _mockScreenshotService = null!;
         private List<string> _receivedStatuses = null!;
 
         [TestInitialize]
@@ -68,6 +84,7 @@ namespace EvidenceSupportTool.Tests
             _mockConfigService = new MockConfigService();
             _mockUserInteractionService = new MockUserInteractionService();
             _mockEvidenceExtractionService = new MockEvidenceExtractionService();
+            _mockScreenshotService = new MockScreenshotService();
             _receivedStatuses = new List<string>();
         }
 
@@ -76,7 +93,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: 監視対象がリストに正しく追加されること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             var target = new MonitoringTarget { Name = "TestTarget", PathPattern = "C:\\test\\file.txt" };
 
             // Act
@@ -94,7 +111,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: 初期状態では、監視対象リストが空であること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
 
             // Act
             var targets = monitoringService.GetMonitoringTargets();
@@ -109,7 +126,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: Startメソッド呼び出し後、監視状態がアクティブになること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             Assert.IsFalse(monitoringService.IsMonitoringActive());
 
             // Act
@@ -124,7 +141,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: Stopメソッド呼び出し後、監視状態が非アクティブになること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             monitoringService.Start();
             Assert.IsTrue(monitoringService.IsMonitoringActive());
 
@@ -140,7 +157,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: 初期状態では、監視状態が非アクティブであること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
 
             // Act & Assert
             Assert.IsFalse(monitoringService.IsMonitoringActive());
@@ -151,7 +168,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: 登録済みの監視対象が、名前を指定して正しく削除できること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             var target1 = new MonitoringTarget { Name = "Target1", PathPattern = "C:\\path1" };
             var target2 = new MonitoringTarget { Name = "Target2", PathPattern = "C:\\path2" };
             monitoringService.AddMonitoringTarget(target1);
@@ -173,7 +190,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: 登録されていない名前を指定した場合、削除が失敗しfalseが返ること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             var target1 = new MonitoringTarget { Name = "Target1", PathPattern = "C:\\path1" };
             monitoringService.AddMonitoringTarget(target1);
             Assert.AreEqual(1, monitoringService.GetMonitoringTargets().Count);
@@ -192,7 +209,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: StartおよびStopメソッド呼び出し時に、StatusChangedイベントが適切なメッセージで発火すること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             monitoringService.StatusChanged += (status) => _receivedStatuses.Add(status);
 
             // Act & Assert for Start
@@ -213,7 +230,7 @@ namespace EvidenceSupportTool.Tests
             var target2 = new MonitoringTarget { Name = "ConfigTarget2", PathPattern = "C:\\config\\path2" };
             _mockConfigService.MonitoringTargets = new List<MonitoringTarget> { target1, target2 };
 
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
 
             // Act
             monitoringService.Start();
@@ -236,7 +253,7 @@ namespace EvidenceSupportTool.Tests
             // Arrange
             _mockEvidenceExtractionService.ExtractEvidenceReturnValue = false; // 差分なしをシミュレート
             _mockConfigService.SetKeepSnapshot(false); // Add this for testing keepSnapshot
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             monitoringService.Start();
 
             // Act
@@ -255,7 +272,7 @@ namespace EvidenceSupportTool.Tests
         {
             // テストの観点: Start時にタイムスタンプ付きのフォルダパスを生成し、CreateSnapshotが適切な引数で呼ばれること。
             // Arrange
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             var targets = new List<MonitoringTarget> { new MonitoringTarget { Name = "Test", PathPattern = "C:\\test.log" } };
             _mockConfigService.MonitoringTargets = targets;
 
@@ -284,7 +301,7 @@ namespace EvidenceSupportTool.Tests
             // テストの観点: Stop時にsnapshot2作成とevidence抽出が適切な引数で呼ばれること。
             // Arrange
             _mockConfigService.SetKeepSnapshot(true); // Add this for testing keepSnapshot
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             var targets = new List<MonitoringTarget> { new MonitoringTarget { Name = "Test", PathPattern = "C:\\test.log" } };
             _mockConfigService.MonitoringTargets = targets;
             monitoringService.Start(); // これで _currentEvidenceFolderPath が設定される
@@ -314,7 +331,7 @@ namespace EvidenceSupportTool.Tests
             // Arrange
             _mockEvidenceExtractionService.ExtractEvidenceReturnValue = true; // 差分ありをシミュレート
             _mockConfigService.SetKeepSnapshot(true); // Add this for testing keepSnapshot
-            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService);
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
             monitoringService.Start();
 
             // Act
@@ -325,6 +342,68 @@ namespace EvidenceSupportTool.Tests
             Assert.AreEqual(1, _mockEvidenceExtractionService.ExtractEvidenceCalls.Count);
             var (_, _, _, keepSnapshot) = _mockEvidenceExtractionService.ExtractEvidenceCalls[0];
             Assert.IsTrue(keepSnapshot); // New
+        }
+
+        [TestMethod]
+        public void Start_ShouldCallScreenshotService_WhenAutoSaveIsEnabled()
+        {
+            // テストの観点: 自動保存が有効な場合、監視開始時にScreenshotService.Startが呼ばれること。
+            // Arrange
+            _mockConfigService.AppSettings = new AppSettings 
+            { 
+                EvidenceSavePath = "C:\\TempEvidence", 
+                KeepSnapshot = false,
+                AutoSaveScreenshots = true 
+            };
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
+
+            // Act
+            monitoringService.Start();
+
+            // Assert
+            Assert.AreEqual(1, _mockScreenshotService.StartCalls.Count);
+            StringAssert.Contains(_mockScreenshotService.StartCalls[0], "screenshots");
+        }
+
+        [TestMethod]
+        public void Stop_ShouldCallScreenshotServiceStop_WhenAutoSaveIsEnabled()
+        {
+            // テストの観点: 自動保存が有効な場合、監視停止時にScreenshotService.Stopが呼ばれること。
+            // Arrange
+            _mockConfigService.AppSettings = new AppSettings 
+            { 
+                EvidenceSavePath = "C:\\TempEvidence", 
+                KeepSnapshot = false,
+                AutoSaveScreenshots = true 
+            };
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
+            monitoringService.Start();
+
+            // Act
+            monitoringService.Stop();
+
+            // Assert
+            Assert.AreEqual(1, _mockScreenshotService.StopCalls);
+        }
+
+        [TestMethod]
+        public void Start_ShouldNotCallScreenshotService_WhenAutoSaveIsDisabled()
+        {
+            // テストの観点: 自動保存が無効な場合、監視開始時にScreenshotService.Startが呼ばれないこと。
+            // Arrange
+            _mockConfigService.AppSettings = new AppSettings 
+            { 
+                EvidenceSavePath = "C:\\TempEvidence", 
+                KeepSnapshot = false,
+                AutoSaveScreenshots = false 
+            };
+            var monitoringService = new MonitoringService(_mockConfigService, _mockUserInteractionService, _mockEvidenceExtractionService, _mockScreenshotService);
+
+            // Act
+            monitoringService.Start();
+
+            // Assert
+            Assert.AreEqual(0, _mockScreenshotService.StartCalls.Count);
         }
 
         

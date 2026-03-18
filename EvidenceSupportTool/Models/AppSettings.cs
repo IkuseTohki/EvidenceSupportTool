@@ -14,5 +14,10 @@ namespace EvidenceSupportTool.Models
         /// スナップショットを保持するかどうか
         /// </summary>
         public bool KeepSnapshot { get; init; }
+
+        /// <summary>
+        /// スクリーンショットを自動保存するかどうか
+        /// </summary>
+        public bool AutoSaveScreenshots { get; init; }
     }
 }

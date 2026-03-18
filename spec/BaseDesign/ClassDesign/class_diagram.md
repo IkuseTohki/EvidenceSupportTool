@@ -32,9 +32,22 @@ classDiagram
         -IConfigService configService
         -IUserInteractionService userInteractionService
         -IEvidenceExtractionService evidenceExtractionService
+        -IScreenshotService screenshotService
         +void Start()
         +void Stop()
         +event Action~string~ StatusChanged
+    }
+
+    class IScreenshotService {
+        <<Interface>>
+        +void Start(string savePath)
+        +void Stop()
+    }
+
+    class ScreenshotService {
+        <<Service>>
+        +void Start(string savePath)
+        +void Stop()
     }
 
     class IEvidenceExtractionService {
@@ -85,6 +98,9 @@ classDiagram
     MonitoringService ..> IConfigService : Uses
     MonitoringService ..> IUserInteractionService : Uses
     MonitoringService ..> IEvidenceExtractionService : Uses
+    MonitoringService ..> IScreenshotService : Uses
+
+    ScreenshotService ..|> IScreenshotService : Implements
 
     EvidenceExtractionService ..|> IEvidenceExtractionService : Implements
 
@@ -117,6 +133,7 @@ classDiagram
   - `setting.ini`の`[Settings]`セクションに対応するデータモデルです。
   - `EvidenceSavePath`: エビデンスの保存先パスを保持します。
   - `KeepSnapshot`: スナップショットを保持するかどうかの設定を保持します。
+  - `AutoSaveScreenshots`: クリップボードの画像を自動保存するかどうかの設定を保持します。
 - **MonitoringTarget**:
   - `setting.ini`の`[Targets]`セクションの個々のエントリに対応するデータモデルです。
   - `Name`: ターゲット名（出力フォルダ名）を保持します。
@@ -143,10 +160,19 @@ classDiagram
   - `Start()`: 監視プロセスを開始します。
   - `Stop()`: 監視プロセスを停止し、差分を検出・保存します。
   - `StatusChanged`: ステータスの変更を ViewModel に通知するためのイベントです。
+- **IScreenshotService** (Interface):
+  - クリップボード監視によるスクリーンショット保存の契約を定義します。
+  - `Start(string savePath)`: クリップボードの監視を開始し、指定されたパスに画像を保存するようにします。
+  - `Stop()`: クリップボードの監視を停止します。
+- **ScreenshotService**:
+  - `IScreenshotService`の実装クラスです。
+  - クリップボードを監視し、画像がコピーされた際にファイルとして保存する責務を持ちます。
 - **MonitoringService**:
   - `IMonitoringService`の実装クラスです。監視フローの制御に責任を持ちます。
   - `IEvidenceExtractionService` を利用して、スナップショットの作成や差分抽出などの具体的なファイル操作を委譲します。
+  - `IScreenshotService` を利用して、監視期間中のスクリーンショット自動保存を制御します。
   - 差分がなかった場合や、処理中にエラーが発生した場合は、`IUserInteractionService` を介してユーザーへの通知を要求します。
+
 - **IEvidenceExtractionService** (Interface):
   - エビデンスの抽出に関する具体的なファイル操作の契約を定義します。
   - `CreateSnapshot(string snapshotPath, IEnumerable<MonitoringTarget> targets)`: 指定されたパスに、監視対象のスナップショットを作成します。

@@ -19,6 +19,7 @@ namespace EvidenceSupportTool.Tests
             Assert.IsNotNull(settings);
             Assert.AreEqual("C:\\TestEvidence", settings.EvidenceSavePath);
             Assert.IsTrue(settings.KeepSnapshot);
+            Assert.IsTrue(settings.AutoSaveScreenshots);
         }
 
         [TestMethod]
