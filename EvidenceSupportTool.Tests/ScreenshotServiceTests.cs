@@ -1,6 +1,7 @@
 using EvidenceSupportTool.Services;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
+using System;
 
 namespace EvidenceSupportTool.Tests
 {
@@ -12,7 +13,8 @@ namespace EvidenceSupportTool.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _testSavePath = Path.Combine(Path.GetTempPath(), "ScreenshotTest");
+            // ターゲットや実行ごとにユニークなディレクトリを作成
+            _testSavePath = Path.Combine(Path.GetTempPath(), "ScreenshotTest_" + Guid.NewGuid().ToString("N"));
             if (Directory.Exists(_testSavePath))
             {
                 Directory.Delete(_testSavePath, true);
@@ -33,7 +35,7 @@ namespace EvidenceSupportTool.Tests
         public void Start_ShouldCreateDirectoryIfNotExist()
         {
             // Arrange
-            var service = new ScreenshotService();
+            using var service = new ScreenshotService();
             var subPath = Path.Combine(_testSavePath, "new_folder");
 
             // Act
@@ -41,13 +43,15 @@ namespace EvidenceSupportTool.Tests
 
             // Assert
             Assert.IsTrue(Directory.Exists(subPath), "保存先ディレクトリが作成されていること。");
+            
+            service.Stop();
         }
 
         [TestMethod]
         public void ProcessClipboardInternal_ShouldSaveOnlyOnce_WhenCalledWithinDebounceInterval()
         {
             // Arrange
-            var service = new ScreenshotService();
+            using var service = new ScreenshotService();
             service.Start(_testSavePath);
             
             var dummyImage = CreateDummyImage();
@@ -64,6 +68,8 @@ namespace EvidenceSupportTool.Tests
             // Assert
             var files = Directory.GetFiles(_testSavePath, "screenshot_*.png");
             Assert.AreEqual(2, files.Length, "デバウンスにより、3回の呼び出しのうち2回だけ保存されていること。");
+
+            service.Stop();
         }
 
         private System.Windows.Media.Imaging.BitmapSource CreateDummyImage()

@@ -3,6 +3,7 @@ using Moq;
 using EvidenceSupportTool.ViewModels;
 using EvidenceSupportTool.Services;
 using System.ComponentModel;
+using System.Collections.Generic;
 
 namespace EvidenceSupportTool.Tests.ViewModels
 {
