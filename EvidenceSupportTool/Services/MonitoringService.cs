@@ -26,7 +26,7 @@ namespace EvidenceSupportTool.Services
         /// <summary>
         /// ステータスの変更を通知するイベントです。
         /// </summary>
-        public event Action<string> StatusChanged;
+        public event Action<string>? StatusChanged;
 
         /// <summary>
         /// MonitoringServiceの新しいインスタンスを初期化します。

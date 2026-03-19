@@ -40,10 +40,10 @@ namespace EvidenceSupportTool.Services
                     if (resolvedPathPattern.Contains("*"))
                     {
                         // ワイルドカードを含む場合
-                        string directory = Path.GetDirectoryName(resolvedPathPattern);
-                        string searchPattern = Path.GetFileName(resolvedPathPattern);
+                        string? directory = Path.GetDirectoryName(resolvedPathPattern);
+                        string? searchPattern = Path.GetFileName(resolvedPathPattern);
 
-                        if (Directory.Exists(directory))
+                        if (directory != null && searchPattern != null && Directory.Exists(directory))
                         {
                             filesToCopy = Directory.GetFiles(directory, searchPattern);
                         }
@@ -116,8 +116,17 @@ namespace EvidenceSupportTool.Services
                             if (fs2.Length > snapshot1FileSize)
                             {
                                 fs2.Seek(snapshot1FileSize, SeekOrigin.Begin);
-                                byte[] buffer = new byte[fs2.Length - snapshot1FileSize];
-                                fs2.Read(buffer, 0, buffer.Length);
+                                int bytesToRead = (int)(fs2.Length - snapshot1FileSize);
+                                byte[] buffer = new byte[bytesToRead];
+                                
+                                // CA2022対策: 要求したバイト数を確実に読み取る
+                                int totalRead = 0;
+                                while (totalRead < bytesToRead)
+                                {
+                                    int read = fs2.Read(buffer, totalRead, bytesToRead - totalRead);
+                                    if (read == 0) break; // 予期せぬEOF
+                                    totalRead += read;
+                                }
 
                                 // 抽出したデータをevidenceディレクトリに保存
                                 CopyBytesToEvidence(buffer, evidencePath, file2.Key);
@@ -211,9 +220,9 @@ namespace EvidenceSupportTool.Services
             }
 
             string destFullPath = Path.Combine(evidenceRootPath, relativePath);
-            string destDir = Path.GetDirectoryName(destFullPath);
+            string? destDir = Path.GetDirectoryName(destFullPath);
 
-            if (!Directory.Exists(destDir))
+            if (destDir != null && !Directory.Exists(destDir))
             {
                 Directory.CreateDirectory(destDir);
             }
@@ -237,9 +246,9 @@ namespace EvidenceSupportTool.Services
             }
 
             string destFullPath = Path.Combine(evidenceRootPath, relativePath);
-            string destDir = Path.GetDirectoryName(destFullPath);
+            string? destDir = Path.GetDirectoryName(destFullPath);
 
-            if (!Directory.Exists(destDir))
+            if (destDir != null && !Directory.Exists(destDir))
             {
                 Directory.CreateDirectory(destDir);
             }

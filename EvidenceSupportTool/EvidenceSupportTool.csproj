@@ -7,12 +7,25 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Resources\app_icon.ico</ApplicationIcon>
+
+    <!-- 単一ファイル配布 (SingleFile) 関連の設定 -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- 自己解凍時にネイティブライブラリやコンテンツを含める設定 -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+
+    <!-- アプリケーションのメタデータ -->
+    <SatelliteResourceLanguages>_</SatelliteResourceLanguages>
     <Version>1.0.2</Version>
     <AssemblyVersion>1.0.2.0</AssemblyVersion>
     <FileVersion>1.0.2.0</FileVersion>
     <Company>EvidenceSupportTool Project</Company>
     <Product>EvidenceSupportTool</Product>
-    <ApplicationIcon>Resources\app_icon.ico</ApplicationIcon>
+    <Copyright>Copyright © 2025-2026 Leaf Project</Copyright>
     
     <!-- EOL Support Warnings suppression (Guidelines 7.1) -->
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>

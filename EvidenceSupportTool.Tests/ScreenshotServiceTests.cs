@@ -8,7 +8,7 @@ namespace EvidenceSupportTool.Tests
     [TestClass]
     public class ScreenshotServiceTests
     {
-        private string _testSavePath;
+        private string _testSavePath = null!;
 
         [TestInitialize]
         public void Initialize()

@@ -288,7 +288,9 @@ namespace EvidenceSupportTool.Tests
             StringAssert.Contains(snapshotPath, "snapshot1");
 
             // タイムスタンプ部分の検証 (yyyyMMdd_HHmmss の形式に近いか)
-            var dirName = new DirectoryInfo(Path.GetDirectoryName(snapshotPath)).Name;
+            var dirPath = Path.GetDirectoryName(snapshotPath);
+            Assert.IsNotNull(dirPath);
+            var dirName = new DirectoryInfo(dirPath).Name;
             Assert.IsTrue(System.Text.RegularExpressions.Regex.IsMatch(dirName, "^\\d{8}_\\d{6}$"));
 
             // 渡されたターゲットが正しいか検証

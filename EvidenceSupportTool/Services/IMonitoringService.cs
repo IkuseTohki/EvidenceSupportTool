@@ -49,6 +49,6 @@ namespace EvidenceSupportTool.Services
         /// <summary>
         /// ステータスの変更を通知するイベントです。
         /// </summary>
-        event Action<string> StatusChanged;
+        event Action<string>? StatusChanged;
     }
 }
