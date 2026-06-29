@@ -90,6 +90,29 @@ namespace EvidenceSupportTool.Services
 
             return targets;
         }
+
+        public IEnumerable<CollectTarget> GetCollectTargets()
+        {
+            var iniData = _parser.Parse(_settingsFilePath);
+
+            if (!iniData.Sections.TryGetValue("CollectTargets", out var collectTargetsSection))
+            {
+                // [CollectTargets]セクションが存在しない場合は空のリストを返す
+                return Enumerable.Empty<CollectTarget>();
+            }
+
+            var targets = new List<CollectTarget>();
+            foreach (var entry in collectTargetsSection)
+            {
+                targets.Add(new CollectTarget
+                {
+                    Name = entry.Key,
+                    PathPattern = entry.Value
+                });
+            }
+
+            return targets;
+        }
     }
 }
 

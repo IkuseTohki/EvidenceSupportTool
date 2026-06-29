@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -32,7 +32,8 @@ namespace EvidenceSupportTool
             var configService = new ConfigService(iniParser); // IniParserを渡す
             var evidenceExtractionService = new EvidenceExtractionService(userInteractionService);
             var screenshotService = new ScreenshotService();
-            var monitoringService = new MonitoringService(configService, userInteractionService, evidenceExtractionService, screenshotService);
+            var logCollectionService = new LogCollectionService(userInteractionService);
+            var monitoringService = new MonitoringService(configService, userInteractionService, evidenceExtractionService, screenshotService, logCollectionService);
 
             this.DataContext = new MainViewModel(monitoringService, configService, userInteractionService);
         }

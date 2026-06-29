@@ -19,5 +19,11 @@ namespace EvidenceSupportTool.Services
         /// </summary>
         /// <returns>MonitoringTargetのコレクション</returns>
         IEnumerable<MonitoringTarget> GetMonitoringTargets();
+
+        /// <summary>
+        /// コピー収集対象のリストを取得します。
+        /// </summary>
+        /// <returns>CollectTargetのコレクション</returns>
+        IEnumerable<CollectTarget> GetCollectTargets();
     }
 }

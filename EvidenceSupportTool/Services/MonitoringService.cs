@@ -14,11 +14,13 @@ namespace EvidenceSupportTool.Services
         private const string Snapshot1FolderName = "snapshot1";
         private const string Snapshot2FolderName = "snapshot2";
         private const string EvidenceFolderName = "evidence";
+        private const string CollectFolderName = "collect";
 
         private readonly IConfigService _configService;
         private readonly IUserInteractionService _userInteractionService;
         private readonly IEvidenceExtractionService _evidenceExtractionService;
         private readonly IScreenshotService _screenshotService;
+        private readonly ILogCollectionService? _logCollectionService;
         private readonly List<MonitoringTarget> _monitoringTargets;
         private bool _isMonitoringActive;
         private string _currentEvidenceFolderPath = string.Empty;
@@ -36,15 +38,17 @@ namespace EvidenceSupportTool.Services
         /// <param name="evidenceExtractionService">エビデンス抽出処理を提供するサービス。</param>
         /// <param name="screenshotService">スクリーンショット保存処理を提供するサービス。</param>
         public MonitoringService(
-            IConfigService configService, 
+            IConfigService configService,
             IUserInteractionService userInteractionService,
             IEvidenceExtractionService evidenceExtractionService,
-            IScreenshotService screenshotService)
+            IScreenshotService screenshotService,
+            ILogCollectionService? logCollectionService = null)
         {
             _configService = configService;
             _userInteractionService = userInteractionService;
             _evidenceExtractionService = evidenceExtractionService;
             _screenshotService = screenshotService;
+            _logCollectionService = logCollectionService;
             _monitoringTargets = new List<MonitoringTarget>();
             _isMonitoringActive = false;
         }
@@ -144,6 +148,14 @@ namespace EvidenceSupportTool.Services
             if (!hasDifference)
             {
                 _userInteractionService.ShowMessage("差分はありませんでした。");
+            }
+
+            // ログファイルをコピー収集する
+            if (_logCollectionService != null)
+            {
+                string collectPath = Path.Combine(_currentEvidenceFolderPath, EvidenceFolderName, CollectFolderName);
+                IEnumerable<CollectTarget> collectTargets = _configService.GetCollectTargets();
+                _logCollectionService.Collect(collectPath, collectTargets);
             }
 
             OnStatusChanged("監視を停止しました。");

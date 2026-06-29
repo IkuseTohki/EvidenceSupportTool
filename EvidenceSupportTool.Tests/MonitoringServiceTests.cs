@@ -18,6 +18,7 @@ namespace EvidenceSupportTool.Tests
         {
             public AppSettings AppSettings { get; set; } = new AppSettings { EvidenceSavePath = "C:\\TempEvidence", KeepSnapshot = false };
             public IEnumerable<MonitoringTarget> MonitoringTargets { get; set; } = new List<MonitoringTarget>();
+            public IEnumerable<CollectTarget> CollectTargets { get; set; } = new List<CollectTarget>();
 
             public AppSettings GetAppSettings() => new AppSettings 
             { 
@@ -26,6 +27,7 @@ namespace EvidenceSupportTool.Tests
                 AutoSaveScreenshots = AppSettings.AutoSaveScreenshots
             };
             public IEnumerable<MonitoringTarget> GetMonitoringTargets() => MonitoringTargets;
+            public IEnumerable<CollectTarget> GetCollectTargets() => CollectTargets;
 
             public void SetKeepSnapshot(bool value)
             {
@@ -403,13 +405,117 @@ namespace EvidenceSupportTool.Tests
 
             // Act
             monitoringService.Start();
-
             // Assert
             Assert.AreEqual(0, _mockScreenshotService.StartCalls.Count);
         }
 
-        
+        // ILogCollectionServiceのモッククラス
+        private class MockLogCollectionService : ILogCollectionService
+        {
+            public List<(string collectPath, IEnumerable<CollectTarget> targets)> CollectCalls { get; } = new();
 
-        
+            public void Collect(string collectPath, IEnumerable<CollectTarget> targets)
+            {
+                CollectCalls.Add((collectPath, targets));
+            }
+        }
+
+        /// <summary>
+        /// テスト観点: Stop()呼び出し時に ILogCollectionService.Collect() が正しいパスで呼ばれること
+        /// </summary>
+        [TestMethod]
+        public void Stop_ShouldCallLogCollectionService_WithCorrectPath()
+        {
+            // Arrange
+            var evidenceSavePath = "C:\\TempEvidence";
+            _mockConfigService.AppSettings = new AppSettings
+            {
+                EvidenceSavePath = evidenceSavePath,
+                KeepSnapshot = false,
+                AutoSaveScreenshots = false
+            };
+            var collectTarget = new CollectTarget { Name = "IisLog", PathPattern = "C:\\inetpub\\logs\\*.log" };
+            _mockConfigService.CollectTargets = new[] { collectTarget };
+
+            var mockLogCollectionService = new MockLogCollectionService();
+            var monitoringService = new MonitoringService(
+                _mockConfigService,
+                _mockUserInteractionService,
+                _mockEvidenceExtractionService,
+                _mockScreenshotService,
+                mockLogCollectionService);
+
+            monitoringService.Start();
+
+            // Act
+            monitoringService.Stop();
+
+            // Assert: Collect()が1回呼ばれていること
+            Assert.AreEqual(1, mockLogCollectionService.CollectCalls.Count);
+
+            // Assert: collectPathが evidence/collect 配下であること
+            var (collectPath, targets) = mockLogCollectionService.CollectCalls[0];
+            StringAssert.EndsWith(collectPath, Path.Combine("evidence", "collect"));
+        }
+
+        /// <summary>
+        /// テスト観点: Stop()でのCollect()の呼び出しがExtractEvidence()の後であること
+        /// （呼び出し順序はEvidenceExtractionのCallsが先に積まれていることで確認）
+        /// </summary>
+        [TestMethod]
+        public void Stop_ShouldCallCollectAfterExtractEvidence()
+        {
+            // Arrange
+            _mockConfigService.AppSettings = new AppSettings
+            {
+                EvidenceSavePath = "C:\\TempEvidence",
+                KeepSnapshot = false,
+                AutoSaveScreenshots = false
+            };
+
+            var callOrder = new List<string>();
+            // ExtractEvidenceが呼ばれたらorderに記録するカスタムMock
+            var orderTrackingExtractionService = new OrderTrackingExtractionService(callOrder);
+            var orderTrackingCollectionService = new OrderTrackingCollectionService(callOrder);
+
+            var monitoringService = new MonitoringService(
+                _mockConfigService,
+                _mockUserInteractionService,
+                orderTrackingExtractionService,
+                _mockScreenshotService,
+                orderTrackingCollectionService);
+
+            monitoringService.Start();
+
+            // Act
+            monitoringService.Stop();
+
+            // Assert: ExtractEvidence → Collect の順
+            Assert.AreEqual(2, callOrder.Count);
+            Assert.AreEqual("ExtractEvidence", callOrder[0]);
+            Assert.AreEqual("Collect", callOrder[1]);
+        }
+
+        private class OrderTrackingExtractionService : IEvidenceExtractionService
+        {
+            private readonly List<string> _order;
+            public OrderTrackingExtractionService(List<string> order) => _order = order;
+            public void CreateSnapshot(string snapshotPath, IEnumerable<MonitoringTarget> targets) { }
+            public bool ExtractEvidence(string s1, string s2, string ev, bool keep)
+            {
+                _order.Add("ExtractEvidence");
+                return false;
+            }
+        }
+
+        private class OrderTrackingCollectionService : ILogCollectionService
+        {
+            private readonly List<string> _order;
+            public OrderTrackingCollectionService(List<string> order) => _order = order;
+            public void Collect(string collectPath, IEnumerable<CollectTarget> targets)
+            {
+                _order.Add("Collect");
+            }
+        }
     }
 }

@@ -1,4 +1,5 @@
 using EvidenceSupportTool.Services;
+using System.IO;
 using System.Linq; // Add this using
 
 namespace EvidenceSupportTool.Tests
@@ -42,6 +43,54 @@ namespace EvidenceSupportTool.Tests
             var systemLogTarget = targets.FirstOrDefault(t => t.Name == "SystemLog");
             Assert.IsNotNull(systemLogTarget);
             Assert.AreEqual("C:\\Logs\\System\\system.log", systemLogTarget.PathPattern);
+        }
+
+        /// <summary>
+        /// テスト観点: [CollectTargets]が存在する場合、エントリが正しく読み込まれること
+        /// </summary>
+        [TestMethod]
+        public void GetCollectTargets_ShouldReadCollectTargetsCorrectly()
+        {
+            // Arrange
+            var configService = new ConfigService(new IniParser(), "test_setting.ini");
+
+            // Act
+            var targets = configService.GetCollectTargets().ToList();
+
+            // Assert
+            Assert.IsNotNull(targets);
+            Assert.AreEqual(2, targets.Count);
+
+            var iisLogTarget = targets.FirstOrDefault(t => t.Name == "IisLog");
+            Assert.IsNotNull(iisLogTarget);
+            Assert.AreEqual("C:\\inetpub\\logs\\{YYYY}{MM}{DD}\\*.log", iisLogTarget.PathPattern);
+
+            var eventLogTarget = targets.FirstOrDefault(t => t.Name == "EventLog");
+            Assert.IsNotNull(eventLogTarget);
+            Assert.AreEqual("C:\\Windows\\System32\\winevt\\Logs\\Application.evtx", eventLogTarget.PathPattern);
+        }
+
+        /// <summary>
+        /// テスト観点: [CollectTargets]が存在しない場合、空のリストが返ること
+        /// </summary>
+        [TestMethod]
+        public void GetCollectTargets_WhenSectionMissing_ShouldReturnEmpty()
+        {
+            // Arrange: [CollectTargets]セクションを持たないINIを使用
+            var tempIni = Path.GetTempFileName();
+            File.WriteAllText(tempIni,
+                "[Targets]\nAppLog = C:\\Logs\\app.log\n\n[Settings]\nEvidenceSavePath = C:\\Out\nKeepSnapshot = false\nAutoSaveScreenshots = false\n");
+            var configService = new ConfigService(new IniParser(), tempIni);
+
+            // Act
+            var targets = configService.GetCollectTargets().ToList();
+
+            // Assert
+            Assert.IsNotNull(targets);
+            Assert.AreEqual(0, targets.Count);
+
+            // Cleanup
+            File.Delete(tempIni);
         }
     }
 }
