@@ -37,5 +37,43 @@ namespace EvidenceSupportTool
 
             this.DataContext = new MainViewModel(monitoringService, configService, userInteractionService);
         }
+
+        /// <summary>
+        /// ドラッグオーバー時のイベントハンドラです。ファイルドロップを受け入れ可能か判定します。
+        /// </summary>
+        /// <param name="sender">イベント送信元</param>
+        /// <param name="e">ドラッグイベント引数</param>
+        private void Window_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        /// <summary>
+        /// ファイルドロップ時のイベントハンドラです。ドロップされたファイルパスをViewModelのコマンドに渡します。
+        /// </summary>
+        /// <param name="sender">イベント送信元</param>
+        /// <param name="e">ドラッグイベント引数</param>
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null && DataContext is MainViewModel vm)
+                {
+                    if (vm.DropSettingFileCommand.CanExecute(files))
+                    {
+                        vm.DropSettingFileCommand.Execute(files);
+                    }
+                }
+            }
+        }
     }
 }

@@ -8,6 +8,8 @@ classDiagram
 
     class MainWindow {
         <<View>>
+        -void Window_Drop(object sender, DragEventArgs e)
+        -void Window_DragOver(object sender, DragEventArgs e)
     }
 
     class MainViewModel {
@@ -15,6 +17,7 @@ classDiagram
         +string StatusText
         +ICommand StartMonitoringCommand
         +ICommand StopMonitoringCommand
+        +ICommand DropSettingFileCommand
         -IMonitoringService monitoringService
         -IConfigService configService
         -IUserInteractionService userInteractionService
@@ -66,13 +69,18 @@ classDiagram
         <<Interface>>
         +AppSettings GetAppSettings()
         +IEnumerable~MonitoringTarget~ GetMonitoringTargets()
+        +IEnumerable~CollectTarget~ GetCollectTargets()
+        +void LoadSettings(string filePath)
     }
 
     class ConfigService {
         <<Service>>
         -IniParser parser
+        -string settingsFilePath
         +AppSettings GetAppSettings()
         +IEnumerable~MonitoringTarget~ GetMonitoringTargets()
+        +IEnumerable~CollectTarget~ GetCollectTargets()
+        +void LoadSettings(string filePath)
     }
 
     class IUserInteractionService {
@@ -117,6 +125,7 @@ classDiagram
 - **MainWindow**:
   - アプリケーションのメインウィンドウ（UI）です。
   - `DataContext`として`MainViewModel`を持ち、UI 要素を ViewModel のプロパティやコマンドにバインドします。
+  - ウィンドウへのドラッグ＆ドロップ（`Drop` / `DragOver`）イベントをハンドリングし、ドロップされたファイルパスを `MainViewModel.DropSettingFileCommand` に渡します。
 
 ### ViewModels
 
@@ -126,6 +135,7 @@ classDiagram
   - `StatusText`: UI に表示される現在のステータス（"待機中", "監視中"など）です。
   - `StartMonitoringCommand`: 監視開始ボタンにバインドされるコマンドです。実行されると`IMonitoringService`の`Start`メソッドを呼び出します。
   - `StopMonitoringCommand`: 監視停止ボタンにバインドされるコマンドです。実行されると`IMonitoringService`の`Stop`メソッドを呼び出します。
+  - `DropSettingFileCommand`: 設定ファイルのドラッグ＆ドロップ時に実行されるコマンドです。渡されたファイルパスの妥当性を検証し、`IConfigService.LoadSettings` を呼び出して設定を動的に反映します。
 
 ### Models
 
@@ -152,9 +162,12 @@ classDiagram
   - 設定情報を取得するための契約を定義します。
   - `GetAppSettings()`: `AppSettings`オブジェクトを取得します。
   - `GetMonitoringTargets()`: `MonitoringTarget`のコレクションを取得します。
+  - `GetCollectTargets()`: `CollectTarget`のコレクションを取得します。
+  - `LoadSettings(string filePath)`: 指定されたパスの設定ファイルを読み込み、内部設定を更新します。
 - **ConfigService**:
   - `IConfigService`の実装クラスです。
   - `IniParser`を利用して INI ファイルの内容を解析し、その結果を`AppSettings`や`MonitoringTarget`といった、アプリケーションで扱いやすいモデルオブジェクトに変換する責務を持ちます。
+  - `LoadSettings(string filePath)`: 設定ファイルパスを更新し、次回以降の設定取得に反映します。また指定ファイルが存在し内容が妥当かを検証します。
 - **IMonitoringService** (Interface):
   - ログ監視のライフサイクル管理に関する契約を定義します。
   - `Start()`: 監視プロセスを開始します。

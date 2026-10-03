@@ -28,6 +28,7 @@ namespace EvidenceSupportTool.Tests
             };
             public IEnumerable<MonitoringTarget> GetMonitoringTargets() => MonitoringTargets;
             public IEnumerable<CollectTarget> GetCollectTargets() => CollectTargets;
+            public void LoadSettings(string filePath) { }
 
             public void SetKeepSnapshot(bool value)
             {
