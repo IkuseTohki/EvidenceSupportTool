@@ -93,48 +93,5 @@ namespace EvidenceSupportTool.Tests
             File.Delete(tempIni);
         }
 
-        /// <summary>
-        /// テスト観点: 有効な設定ファイルを指定してLoadSettingsを呼び出した場合、設定ファイルパスが更新され新しい設定値が反映されること
-        /// </summary>
-        [TestMethod]
-        public void LoadSettings_WhenValidFile_ShouldUpdateSettingsFilePath()
-        {
-            // Arrange
-            var configService = new ConfigService(new IniParser(), "test_setting.ini");
-            var tempIni = Path.GetTempFileName();
-            File.WriteAllText(tempIni,
-                "[Targets]\nNewAppLog = D:\\Logs\\app.log\n\n[Settings]\nEvidenceSavePath = D:\\NewEvidence\nKeepSnapshot = false\nAutoSaveScreenshots = false\n");
-
-            try
-            {
-                // Act
-                configService.LoadSettings(tempIni);
-                var settings = configService.GetAppSettings();
-                var targets = configService.GetMonitoringTargets().ToList();
-
-                // Assert
-                Assert.AreEqual("D:\\NewEvidence", settings.EvidenceSavePath);
-                Assert.AreEqual(1, targets.Count);
-                Assert.AreEqual("NewAppLog", targets[0].Name);
-            }
-            finally
-            {
-                File.Delete(tempIni);
-            }
-        }
-
-        /// <summary>
-        /// テスト観点: 存在しないファイルを指定してLoadSettingsを呼び出した場合、FileNotFoundExceptionがスローされること
-        /// </summary>
-        [TestMethod]
-        [ExpectedException(typeof(FileNotFoundException))]
-        public void LoadSettings_WhenFileDoesNotExist_ShouldThrowFileNotFoundException()
-        {
-            // Arrange
-            var configService = new ConfigService(new IniParser(), "test_setting.ini");
-
-            // Act
-            configService.LoadSettings("non_existent_file.ini");
-        }
     }
 }

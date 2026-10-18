@@ -114,24 +114,6 @@ namespace EvidenceSupportTool.Services
             return targets;
         }
 
-        /// <summary>
-        /// 指定されたパスの設定ファイルを読み込み、設定ファイルパスを更新します。
-        /// </summary>
-        /// <param name="filePath">設定ファイルのパス</param>
-        /// <exception cref="FileNotFoundException">指定されたファイルが存在しない場合にスローされます。</exception>
-        /// <exception cref="InvalidOperationException">設定ファイルの内容が不正な場合にスローされます。</exception>
-        public void LoadSettings(string filePath)
-        {
-            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
-            {
-                throw new FileNotFoundException("指定された設定ファイルが見つかりません。", filePath);
-            }
-
-            // ファイルが妥当なINI形式か検証する
-            _parser.Parse(filePath);
-
-            _settingsFilePath = filePath;
-        }
     }
 }
 

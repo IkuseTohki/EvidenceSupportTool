@@ -26,10 +26,5 @@ namespace EvidenceSupportTool.Services
         /// <returns>CollectTargetのコレクション</returns>
         IEnumerable<CollectTarget> GetCollectTargets();
 
-        /// <summary>
-        /// 指定されたパスの設定ファイルを読み込み、設定ファイルパスを更新します。
-        /// </summary>
-        /// <param name="filePath">設定ファイルのパス</param>
-        void LoadSettings(string filePath);
     }
 }
