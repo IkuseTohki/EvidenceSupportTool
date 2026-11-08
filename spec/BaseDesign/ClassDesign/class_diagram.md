@@ -36,6 +36,8 @@ classDiagram
         -IUserInteractionService userInteractionService
         -IEvidenceExtractionService evidenceExtractionService
         -IScreenshotService screenshotService
+        -ILogCollectionService logCollectionService
+        -DateTime monitoringStartTime
         +void Start()
         +void Stop()
         +event Action~string~ StatusChanged
@@ -45,6 +47,17 @@ classDiagram
         <<Interface>>
         +void Start(string savePath)
         +void Stop()
+    }
+
+    class ILogCollectionService {
+        <<Interface>>
+        +void Collect(string collectPath, IEnumerable~CollectTarget~ targets, DateTime monitoringStartTime)
+    }
+
+    class LogCollectionService {
+        <<Service>>
+        -IUserInteractionService userInteractionService
+        +void Collect(string collectPath, IEnumerable~CollectTarget~ targets, DateTime monitoringStartTime)
     }
 
     class ScreenshotService {
@@ -91,6 +104,7 @@ classDiagram
 
     class AppSettings { <<Model>> }
     class MonitoringTarget { <<Model>> }
+    class CollectTarget { <<Model>> }
     class IniParser { <<Helper>> }
     class IniData { <<DTO>> }
     class ICommand { <<Interface>> }
@@ -107,6 +121,9 @@ classDiagram
     MonitoringService ..> IUserInteractionService : Uses
     MonitoringService ..> IEvidenceExtractionService : Uses
     MonitoringService ..> IScreenshotService : Uses
+    MonitoringService ..> ILogCollectionService : Uses
+    LogCollectionService ..|> ILogCollectionService : Implements
+    LogCollectionService ..> IUserInteractionService : Uses
 
     ScreenshotService ..|> IScreenshotService : Implements
 
@@ -148,6 +165,10 @@ classDiagram
   - `setting.ini`の`[Targets]`セクションの個々のエントリに対応するデータモデルです。
   - `Name`: ターゲット名（出力フォルダ名）を保持します。
   - `PathPattern`: 監視対象のパス（ワイルドカードや日付フォーマットを含む）を保持します。
+- **CollectTarget**:
+  - `setting.ini`の`[CollectTargets]`セクションの個々のエントリに対応するデータモデルです。
+  - `Name`: ターゲット名（エビデンス保存時のサブフォルダ名）を保持します。
+  - `PathPattern`: 収集対象のパス（ワイルドカードや日付フォーマットを含む）を保持します。
 - **IniData**:
   - `IniParser`によってパースされた INI ファイルの生データを保持するデータ転送オブジェクト(DTO)です。
   - `Sections`: セクション名をキーとし、そのセクション内のキーと値の辞書を値として持つ、ネストされた辞書構造です。
@@ -184,6 +205,7 @@ classDiagram
   - `IMonitoringService`の実装クラスです。監視フローの制御に責任を持ちます。
   - `IEvidenceExtractionService` を利用して、スナップショットの作成や差分抽出などの具体的なファイル操作を委譲します。
   - `IScreenshotService` を利用して、監視期間中のスクリーンショット自動保存を制御します。
+  - `ILogCollectionService` を利用して、監視期間中に更新されたファイルの収集を制御します。開始時刻を保持し、停止時にサービスへ渡します。
   - 差分がなかった場合や、処理中にエラーが発生した場合は、`IUserInteractionService` を介してユーザーへの通知を要求します。
 
 - **IEvidenceExtractionService** (Interface):
@@ -193,6 +215,12 @@ classDiagram
 - **EvidenceExtractionService**:
   - `IEvidenceExtractionService`の実装クラスです。
   - スナップショットの作成、ファイル比較、差分ファイルの保存など、実際のファイルシステム操作に責任を持ちます。
+- **ILogCollectionService** (Interface):
+  - 対象ログファイル（丸ごと収集対象）の収集に関する契約を定義します。
+  - `Collect(string collectPath, IEnumerable<CollectTarget> targets, DateTime monitoringStartTime)`: 監視開始時刻以降に更新されたファイルを対象フォルダへコピーします。
+- **LogCollectionService**:
+  - `ILogCollectionService`の実装クラスです。
+  - 対象ファイル（ワイルドカード・日付フォーマット展開後）のうち、最終更新日時（`LastWriteTime`）が監視開始時刻以降のものを判定し、`collectPath` 配下のサブディレクトリへコピーします。更新されたファイルが存在しないターゲットのフォルダは作成しません。エラー発生時は `IUserInteractionService` を介して通知します。
 
 ### Helpers
 

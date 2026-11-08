@@ -58,7 +58,7 @@ namespace EvidenceSupportTool.Tests
             var service = new LogCollectionService(new MockUserInteractionService());
 
             // Act
-            service.Collect(collectPath, new[] { target });
+            service.Collect(collectPath, new[] { target }, DateTime.MinValue);
 
             // Assert
             var expectedFile = Path.Combine(collectPath, "AppLog", "app.log");
@@ -86,7 +86,7 @@ namespace EvidenceSupportTool.Tests
             var service = new LogCollectionService(new MockUserInteractionService());
 
             // Act
-            service.Collect(collectPath, new[] { target });
+            service.Collect(collectPath, new[] { target }, DateTime.MinValue);
 
             // Assert
             var iisLogDir = Path.Combine(collectPath, "IisLog");
@@ -111,7 +111,7 @@ namespace EvidenceSupportTool.Tests
             var service = new LogCollectionService(new MockUserInteractionService());
 
             // Act & Assert (例外が発生しないこと)
-            service.Collect(collectPath, new[] { target });
+            service.Collect(collectPath, new[] { target }, DateTime.MinValue);
 
             // collectPathは作成されていないはず（ファイルが0件）
             var targetDir = Path.Combine(collectPath, "MissingLog");
@@ -137,7 +137,7 @@ namespace EvidenceSupportTool.Tests
             var service = new LogCollectionService(new MockUserInteractionService());
 
             // Act
-            service.Collect(collectPath, new[] { target });
+            service.Collect(collectPath, new[] { target }, DateTime.MinValue);
 
             // Assert
             var expectedFile = Path.Combine(collectPath, "DatedLog", "dated.log");
@@ -167,11 +167,99 @@ namespace EvidenceSupportTool.Tests
             var service = new LogCollectionService(new MockUserInteractionService());
 
             // Act
-            service.Collect(collectPath, targets);
+            service.Collect(collectPath, targets, DateTime.MinValue);
 
             // Assert
             Assert.IsTrue(File.Exists(Path.Combine(collectPath, "TargetA", "a.log")));
             Assert.IsTrue(File.Exists(Path.Combine(collectPath, "TargetB", "b.log")));
+        }
+
+        /// <summary>
+        /// テスト観点: 監視開始時刻より前に更新されたファイルはコピーされず、ターゲットフォルダも作成されないこと
+        /// </summary>
+        [TestMethod]
+        public void Collect_FileModifiedBeforeMonitoringStartTime_ShouldNotBeCopiedAndDirectoryNotCreated()
+        {
+            // Arrange
+            var sourceDir = Path.Combine(_testRoot, "old_logs");
+            Directory.CreateDirectory(sourceDir);
+            var sourceFile = Path.Combine(sourceDir, "old.log");
+            File.WriteAllText(sourceFile, "old log");
+
+            var monitoringStartTime = new DateTime(2026, 1, 1, 12, 0, 0);
+            File.SetLastWriteTime(sourceFile, monitoringStartTime.AddMinutes(-10));
+
+            var collectPath = Path.Combine(_testRoot, "collect");
+            var target = new CollectTarget { Name = "OldTarget", PathPattern = sourceFile };
+            var service = new LogCollectionService(new MockUserInteractionService());
+
+            // Act
+            service.Collect(collectPath, new[] { target }, monitoringStartTime);
+
+            // Assert
+            var targetDir = Path.Combine(collectPath, "OldTarget");
+            Assert.IsFalse(Directory.Exists(targetDir), "更新されていない場合、ターゲットフォルダが作成されてはいけません");
+            Assert.IsFalse(File.Exists(Path.Combine(targetDir, "old.log")), "更新されていないファイルはコピーされてはいけません");
+        }
+
+        /// <summary>
+        /// テスト観点: 監視開始時刻以降に更新されたファイルがコピーされること
+        /// </summary>
+        [TestMethod]
+        public void Collect_FileModifiedAfterMonitoringStartTime_ShouldBeCopied()
+        {
+            // Arrange
+            var sourceDir = Path.Combine(_testRoot, "new_logs");
+            Directory.CreateDirectory(sourceDir);
+            var sourceFile = Path.Combine(sourceDir, "new.log");
+            File.WriteAllText(sourceFile, "new log content");
+
+            var monitoringStartTime = new DateTime(2026, 1, 1, 12, 0, 0);
+            File.SetLastWriteTime(sourceFile, monitoringStartTime.AddMinutes(5));
+
+            var collectPath = Path.Combine(_testRoot, "collect");
+            var target = new CollectTarget { Name = "NewTarget", PathPattern = sourceFile };
+            var service = new LogCollectionService(new MockUserInteractionService());
+
+            // Act
+            service.Collect(collectPath, new[] { target }, monitoringStartTime);
+
+            // Assert
+            var expectedFile = Path.Combine(collectPath, "NewTarget", "new.log");
+            Assert.IsTrue(File.Exists(expectedFile), $"更新されたファイルがコピーされていません: {expectedFile}");
+            Assert.AreEqual("new log content", File.ReadAllText(expectedFile));
+        }
+
+        /// <summary>
+        /// テスト観点: 複数ファイルが存在する場合、監視開始時刻以降に更新されたファイルのみがコピーされること
+        /// </summary>
+        [TestMethod]
+        public void Collect_MixedFiles_ShouldOnlyCopyFilesModifiedAfterStartTime()
+        {
+            // Arrange
+            var sourceDir = Path.Combine(_testRoot, "mixed_logs");
+            Directory.CreateDirectory(sourceDir);
+            var oldFile = Path.Combine(sourceDir, "file_old.log");
+            var newFile = Path.Combine(sourceDir, "file_new.log");
+            File.WriteAllText(oldFile, "old content");
+            File.WriteAllText(newFile, "new content");
+
+            var monitoringStartTime = new DateTime(2026, 1, 1, 12, 0, 0);
+            File.SetLastWriteTime(oldFile, monitoringStartTime.AddMinutes(-5));
+            File.SetLastWriteTime(newFile, monitoringStartTime.AddMinutes(5));
+
+            var collectPath = Path.Combine(_testRoot, "collect");
+            var pattern = Path.Combine(sourceDir, "*.log");
+            var target = new CollectTarget { Name = "MixedTarget", PathPattern = pattern };
+            var service = new LogCollectionService(new MockUserInteractionService());
+
+            // Act
+            service.Collect(collectPath, new[] { target }, monitoringStartTime);
+
+            // Assert
+            var targetDir = Path.Combine(collectPath, "MixedTarget");
+            Assert.IsTrue(File.Exists(Path.Combine(targetDir, "file_new.log")), "更新されたファイルがコピーされていません");
+            Assert.IsFalse(File.Exists(Path.Combine(targetDir, "file_old.log")), "更新されていないファイルがコピーされてはいけません");
         }
     }
 }

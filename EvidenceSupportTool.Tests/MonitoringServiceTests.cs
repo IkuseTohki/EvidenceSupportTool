@@ -413,11 +413,11 @@ namespace EvidenceSupportTool.Tests
         // ILogCollectionServiceのモッククラス
         private class MockLogCollectionService : ILogCollectionService
         {
-            public List<(string collectPath, IEnumerable<CollectTarget> targets)> CollectCalls { get; } = new();
+            public List<(string collectPath, IEnumerable<CollectTarget> targets, DateTime monitoringStartTime)> CollectCalls { get; } = new();
 
-            public void Collect(string collectPath, IEnumerable<CollectTarget> targets)
+            public void Collect(string collectPath, IEnumerable<CollectTarget> targets, DateTime monitoringStartTime)
             {
-                CollectCalls.Add((collectPath, targets));
+                CollectCalls.Add((collectPath, targets, monitoringStartTime));
             }
         }
 
@@ -445,6 +445,7 @@ namespace EvidenceSupportTool.Tests
                 _mockEvidenceExtractionService,
                 _mockScreenshotService,
                 mockLogCollectionService);
+            var beforeStart = DateTime.Now.AddSeconds(-2);
 
             monitoringService.Start();
 
@@ -455,8 +456,11 @@ namespace EvidenceSupportTool.Tests
             Assert.AreEqual(1, mockLogCollectionService.CollectCalls.Count);
 
             // Assert: collectPathが evidence/collect 配下であること
-            var (collectPath, targets) = mockLogCollectionService.CollectCalls[0];
+            var (collectPath, targets, monitoringStartTime) = mockLogCollectionService.CollectCalls[0];
             StringAssert.EndsWith(collectPath, Path.Combine("evidence", "collect"));
+
+            // Assert: monitoringStartTimeがStart()実行時の時刻であること
+            Assert.IsTrue(monitoringStartTime >= beforeStart, $"monitoringStartTime ({monitoringStartTime}) は開始時刻 ({beforeStart}) 以降である必要があります。");
         }
 
         /// <summary>
@@ -513,7 +517,7 @@ namespace EvidenceSupportTool.Tests
         {
             private readonly List<string> _order;
             public OrderTrackingCollectionService(List<string> order) => _order = order;
-            public void Collect(string collectPath, IEnumerable<CollectTarget> targets)
+            public void Collect(string collectPath, IEnumerable<CollectTarget> targets, DateTime monitoringStartTime)
             {
                 _order.Add("Collect");
             }

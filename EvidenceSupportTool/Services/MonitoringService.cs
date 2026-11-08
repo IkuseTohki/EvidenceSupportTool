@@ -24,6 +24,7 @@ namespace EvidenceSupportTool.Services
         private readonly List<MonitoringTarget> _monitoringTargets;
         private bool _isMonitoringActive;
         private string _currentEvidenceFolderPath = string.Empty;
+        private DateTime _monitoringStartTime;
 
         /// <summary>
         /// ステータスの変更を通知するイベントです。
@@ -91,6 +92,7 @@ namespace EvidenceSupportTool.Services
             // タイムスタンプ付きのフォルダパスを生成
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             _currentEvidenceFolderPath = Path.Combine(appSettings.EvidenceSavePath, timestamp);
+            _monitoringStartTime = DateTime.Now;
 
             // スクリーンショット保存機能が有効な場合、監視を開始
             if (appSettings.AutoSaveScreenshots)
@@ -155,7 +157,7 @@ namespace EvidenceSupportTool.Services
             {
                 string collectPath = Path.Combine(_currentEvidenceFolderPath, EvidenceFolderName, CollectFolderName);
                 IEnumerable<CollectTarget> collectTargets = _configService.GetCollectTargets();
-                _logCollectionService.Collect(collectPath, collectTargets);
+                _logCollectionService.Collect(collectPath, collectTargets, _monitoringStartTime);
             }
 
             OnStatusChanged("監視を停止しました。");

@@ -1,4 +1,5 @@
 using EvidenceSupportTool.Models;
+using System;
 using System.Collections.Generic;
 
 namespace EvidenceSupportTool.Services
@@ -9,12 +10,13 @@ namespace EvidenceSupportTool.Services
     public interface ILogCollectionService
     {
         /// <summary>
-        /// 指定された収集対象のファイルを collectPath へコピーします。
+        /// 指定された収集対象のファイルのうち、監視開始時刻以降に更新されたファイルを collectPath へコピーします。
         /// パスパターン内の日付フォーマット（{YYYY}, {MM}, {DD}）は実行時の日付で解決されます。
         /// ワイルドカード（*）はファイル名検索に使用されます。
         /// </summary>
         /// <param name="collectPath">収集先のルートフォルダパス。</param>
         /// <param name="targets">収集対象のリスト。</param>
-        void Collect(string collectPath, IEnumerable<CollectTarget> targets);
+        /// <param name="monitoringStartTime">監視開始時刻。</param>
+        void Collect(string collectPath, IEnumerable<CollectTarget> targets, DateTime monitoringStartTime);
     }
 }

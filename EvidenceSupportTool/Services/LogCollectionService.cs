@@ -23,13 +23,14 @@ namespace EvidenceSupportTool.Services
         }
 
         /// <summary>
-        /// 指定された収集対象のファイルを collectPath へコピーします。
+        /// 指定された収集対象のファイルのうち、監視開始時刻以降に更新されたファイルを collectPath へコピーします。
         /// パスパターン内の日付フォーマット（{YYYY}, {MM}, {DD}）は実行時の日付で解決されます。
         /// ワイルドカード（*）はファイル名検索に使用されます。
         /// </summary>
         /// <param name="collectPath">収集先のルートフォルダパス。</param>
         /// <param name="targets">収集対象のリスト。</param>
-        public void Collect(string collectPath, IEnumerable<CollectTarget> targets)
+        /// <param name="monitoringStartTime">監視開始時刻。</param>
+        public void Collect(string collectPath, IEnumerable<CollectTarget> targets, DateTime monitoringStartTime)
         {
             try
             {
@@ -69,13 +70,28 @@ namespace EvidenceSupportTool.Services
                         }
                     }
 
-                    // ファイルをコピー
+                    // 監視開始時刻以降に更新・作成されたファイルのみを抽出
+                    var modifiedFiles = new List<string>();
                     foreach (string sourcePath in filesToCopy)
                     {
-                        // ターゲットごとのサブディレクトリを作成
-                        string targetDir = Path.Combine(collectPath, target.Name);
-                        Directory.CreateDirectory(targetDir);
+                        if (File.GetLastWriteTime(sourcePath) >= monitoringStartTime)
+                        {
+                            modifiedFiles.Add(sourcePath);
+                        }
+                    }
 
+                    if (modifiedFiles.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    // ターゲットごとのサブディレクトリを作成
+                    string targetDir = Path.Combine(collectPath, target.Name);
+                    Directory.CreateDirectory(targetDir);
+
+                    // ファイルをコピー
+                    foreach (string sourcePath in modifiedFiles)
+                    {
                         string destPath = Path.Combine(targetDir, Path.GetFileName(sourcePath));
                         File.Copy(sourcePath, destPath, overwrite: true);
                     }
