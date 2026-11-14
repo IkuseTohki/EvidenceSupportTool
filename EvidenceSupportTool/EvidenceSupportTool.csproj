@@ -20,9 +20,9 @@
 
     <!-- アプリケーションのメタデータ -->
     <SatelliteResourceLanguages>_</SatelliteResourceLanguages>
-    <Version>1.0.4</Version>
-    <AssemblyVersion>1.0.4.0</AssemblyVersion>
-    <FileVersion>1.0.4.0</FileVersion>
+    <Version>1.0.5</Version>
+    <AssemblyVersion>1.0.5.0</AssemblyVersion>
+    <FileVersion>1.0.5.0</FileVersion>
     <Company>EvidenceSupportTool Project</Company>
     <Product>EvidenceSupportTool</Product>
     <Copyright>Copyright © 2025-2026 Leaf Project</Copyright>

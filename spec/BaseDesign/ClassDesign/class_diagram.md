@@ -201,6 +201,7 @@ classDiagram
 - **ScreenshotService**:
   - `IScreenshotService`の実装クラスです。
   - クリップボードを監視し、画像がコピーされた際にファイルとして保存する責務を持ちます。
+  - 排他ロック競合時のリトライ機構、Snipping Tool等による透明画像（全Alpha=0）の不透明補正、無効画像の除外、および画像ハッシュ比較による連続キャプチャのヌケモレ防止と重複抑止を行います。
 - **MonitoringService**:
   - `IMonitoringService`の実装クラスです。監視フローの制御に責任を持ちます。
   - `IEvidenceExtractionService` を利用して、スナップショットの作成や差分抽出などの具体的なファイル操作を委譲します。
